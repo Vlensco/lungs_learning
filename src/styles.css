@@ -123,7 +123,7 @@ button { cursor: pointer; border: 0; background: transparent; color: inherit; pa
 }
 .mini-legend {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
 }
 .legend-chip {
@@ -133,6 +133,7 @@ button { cursor: pointer; border: 0; background: transparent; color: inherit; pa
   padding: 6px 4px;
   text-align: center;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
+  min-width: 0;
 }
 .legend-chip strong { display: block; font-size: 13.5px; color: #0f172a; }
 .legend-chip span { display: block; color: var(--muted); font-size: 9px; margin-top: 2px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
@@ -917,6 +918,10 @@ button { cursor: pointer; border: 0; background: transparent; color: inherit; pa
 @media (max-width: 600px) {
   .breathing-rate-controller { width: 190px; }
   .circular-progress-row { gap: 10px; }
+  .mini-legend { gap: 4px; }
+  .legend-chip { padding: 6px 2px; }
+  .legend-chip strong { font-size: 12px; }
+  .legend-chip span { font-size: 8px; }
   .notice { font-size: 11px; }
   .flat-leader-label { left: 45px; }
   .flat-leader-label .label-title { font-size: 11.5px; }
