@@ -560,9 +560,11 @@ button { cursor: pointer; border: 0; background: transparent; color: inherit; pa
   background: rgba(15, 23, 42, 0.4);
   backdrop-filter: blur(16px);
   z-index: 99999;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 20px;
+  overflow-y: auto;
   animation: fadeIn 0.4s ease;
 }
 
@@ -920,7 +922,25 @@ button { cursor: pointer; border: 0; background: transparent; color: inherit; pa
   .flat-leader-label .label-title { font-size: 11.5px; }
   .flat-leader-label .label-tag { font-size: 7px; }
   .lang-card-grid { grid-template-columns: 1fr; gap: 10px; }
-  .welcome-modal-card { padding: 24px; }
+  /* Welcome modal: scroll on small screens */
+  .welcome-overlay {
+    align-items: flex-start;
+    padding: 16px 16px 40px;
+  }
+  .welcome-modal-card {
+    padding: 24px 20px;
+    border-radius: 20px;
+    margin: auto 0;
+  }
+  .welcome-icon-box {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    margin: 0 auto 12px;
+  }
+  .welcome-modal-card h2 { font-size: 20px; }
+  .welcome-modal-card h3 { font-size: 11px; margin-bottom: 10px; }
+  .welcome-desc { font-size: 12.5px; margin-bottom: 16px; }
   /* Hide rotate hint on mobile */
   .hint { display: none; }
   /* Left panel full width on small phones */
