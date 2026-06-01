@@ -812,6 +812,7 @@ button { cursor: pointer; border: 0; background: transparent; color: inherit; pa
     left: 0;
     top: 0;
     height: 100vh;
+    height: 100dvh;
     width: 100vw;
     max-width: 360px;
     z-index: 1000;
@@ -824,7 +825,7 @@ button { cursor: pointer; border: 0; background: transparent; color: inherit; pa
     box-shadow: 15px 0 40px rgba(15, 23, 42, 0.06);
     overflow-y: auto;
     overflow-x: hidden;
-    padding-bottom: 32px;
+    padding-bottom: 180px;
   }
   .left-panel .part-list {
     overflow-y: visible;
