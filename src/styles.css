@@ -826,6 +826,12 @@ button { cursor: pointer; border: 0; background: transparent; color: inherit; pa
     overflow-x: hidden;
     padding-bottom: 32px;
   }
+  .left-panel .part-list {
+    overflow-y: visible;
+    flex: none;
+    min-height: auto;
+    padding-right: 0;
+  }
   .left-panel.open {
     transform: translateX(0);
   }
