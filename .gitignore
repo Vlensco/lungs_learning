@@ -1,0 +1,53 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Compiler outputs / Production Build
+dist/
+dist-ssr/
+*.local
+
+# Portfolios & temporary folders
+.tempmediaStorage/
+.tmp/
+tmp/
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+
+# Antigravity & AI Agents Settings
+.gemini/
+.gemini-ide/
+.antigravity/
+antigravity-ide/
+brain/
+walkthrough.md
+task.md
+implementation_plan.md
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# TypeScript
+*.tsbuildinfo
