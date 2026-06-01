@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 // Reusable modern vector medical icon for Lungs
 export const LungsIcon = ({ size = 22, color = "#2563eb" }) => (
@@ -29,6 +29,23 @@ export const LungsIcon = ({ size = 22, color = "#2563eb" }) => (
 
 // Start Language Welcome Modal Component
 export default function WelcomeScreen({ onSelectLanguage }) {
+  const [username, setUsername] = useState('');
+  const [error, setError] = useState('');
+
+  const handleLangClick = (selectedLang) => {
+    const trimmed = username.trim();
+    if (!trimmed) {
+      setError('Silakan masukkan Nama Pengguna untuk mulai / Please enter a Username to begin.');
+      return;
+    }
+    setError('');
+    onSelectLanguage(trimmed, selectedLang);
+  };
+
+  const handleAdminQuickClick = () => {
+    onSelectLanguage('admin', 'id');
+  };
+
   return (
     <div className="welcome-overlay">
       <div className="welcome-modal-card">
@@ -40,23 +57,49 @@ export default function WelcomeScreen({ onSelectLanguage }) {
         <p className="welcome-desc">
           Selamat datang di simulator anatomi paru-paru interaktif berbasis referensi kedokteran klinis. 
           Pilih bahasa pengantar sebelum memulai demonstrasi.
-          <br /><br />
-          Welcome to the interactive lung anatomical simulator based on clinical medical references. 
-          Please select your preferred language to begin.
         </p>
+
+        <div className="username-input-container">
+          <label htmlFor="username-input">
+            Nama Pengguna / Student Username
+          </label>
+          <input
+            id="username-input"
+            type="text"
+            placeholder="Masukkan Nama Anda... (Ketik 'admin' untuk Panel Admin)"
+            value={username}
+            onChange={(e) => {
+              setUsername(e.target.value);
+              if (e.target.value.trim()) setError('');
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleLangClick('id');
+              }
+            }}
+          />
+          {error && <p className="welcome-error-msg">{error}</p>}
+        </div>
+
         <div className="lang-card-grid">
-          <button className="lang-select-card" onClick={() => onSelectLanguage('id')}>
+          <button className="lang-select-card" onClick={() => handleLangClick('id')}>
             <span className="lang-flag">🇮🇩</span>
             <strong>Bahasa Indonesia</strong>
             <span>Eksplorasi dalam Bahasa Indonesia</span>
           </button>
-          <button className="lang-select-card" onClick={() => onSelectLanguage('en')}>
+          <button className="lang-select-card" onClick={() => handleLangClick('en')}>
             <span className="lang-flag">🇺🇸</span>
             <strong>English (US)</strong>
             <span>Explore in US English</span>
           </button>
         </div>
-        <p className="welcome-footer">RESPIRA 3D Learning Module • Inspired by TeachMeAnatomy</p>
+
+        <div className="welcome-footer-row">
+          <button className="admin-portal-link" onClick={handleAdminQuickClick}>
+            🔒 Masuk sebagai Admin (Admin Portal)
+          </button>
+          <p className="welcome-footer">RESPIRA 3D Learning Module • Inspired by TeachMeAnatomy</p>
+        </div>
       </div>
     </div>
   );

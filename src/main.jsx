@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Layers3, Microscope, Rotate3D, Search, X, Volume2, Menu } from 'lucide-react';
+import { Layers3, Microscope, Rotate3D, Search, X, Volume2, Menu, Award, Clock } from 'lucide-react';
 import './styles.css';
 
 // Modular data, utilities, and components
@@ -10,10 +10,24 @@ import WelcomeScreen, { LungsIcon } from './components/WelcomeScreen';
 import MiniLegend from './components/MiniLegend';
 import PartCard from './components/PartCard';
 import LungScene from './components/LungScene';
+import AdminDashboard from './components/AdminDashboard';
+import AdminLogin from './components/AdminLogin';
+import PracticeModule from './components/PracticeModule';
+import { supabase } from './utils/supabaseClient';
 
 function App() {
   const [lang, setLang] = useState('id'); // 'id' or 'en'
   const [isLanguageSelected, setIsLanguageSelected] = useState(false); // start selection flag
+  const [currentStudent, setCurrentStudent] = useState('');
+  const [isAdminActive, setIsAdminActive] = useState(false);
+  const [isPracticeActive, setIsPracticeActive] = useState(false);
+
+  // Clean URL Routing state
+  const [isAdminRouteActive, setIsAdminRouteActive] = useState(() => {
+    const path = window.location.pathname.toLowerCase();
+    const hash = window.location.hash.toLowerCase();
+    return path === '/admin/login' || hash === '#/admin/login' || hash.includes('/admin/login');
+  });
 
   const [activeId, setActiveId] = useState('trakea');
   const [activeLayer, setActiveLayer] = useState('Semua');
@@ -28,6 +42,139 @@ function App() {
   
   // Custom state for automatic voice guidance
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
+
+  // Student Quiz Attempts history list
+  const [quizAttempts, setQuizAttempts] = useState([]);
+
+  // Fetch student's specific quiz attempts (Supabase + Local fallback)
+  const fetchStudentAttempts = async (studentName) => {
+    if (!studentName) return;
+    let loadedFromDb = false;
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('respira_practice_attempts')
+          .select('*')
+          .eq('username', studentName)
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          const formatted = data.map(item => ({
+            category: item.category,
+            score: item.score,
+            totalQuestions: item.total_questions,
+            timestamp: new Date(item.created_at).getTime()
+          }));
+          setQuizAttempts(formatted);
+          loadedFromDb = true;
+          console.log('[Supabase] Successfully loaded student quiz history.');
+        }
+      } catch (err) {
+        console.warn('[Supabase] Failed to fetch attempts history:', err.message);
+      }
+    }
+
+    if (!loadedFromDb) {
+      try {
+        const saved = localStorage.getItem('respira_practice_attempts');
+        if (saved) {
+          const allAttempts = JSON.parse(saved);
+          const studentAttempts = allAttempts
+            .filter(a => a.username.toLowerCase() === studentName.toLowerCase())
+            .sort((a, b) => b.timestamp - a.timestamp);
+          setQuizAttempts(studentAttempts);
+        } else {
+          setQuizAttempts([]);
+        }
+      } catch (e) {
+        console.error('Failed to load local attempts history:', e);
+      }
+    }
+  };
+
+  // Sync quiz history when practice modal closes or student logs in
+  useEffect(() => {
+    if (!isPracticeActive && currentStudent) {
+      fetchStudentAttempts(currentStudent);
+    }
+  }, [isPracticeActive, currentStudent]);
+
+  // Router listener for URL updates
+  useEffect(() => {
+    const handleLocationCheck = () => {
+      const path = window.location.pathname.toLowerCase();
+      const hash = window.location.hash.toLowerCase();
+      const isAdm = path === '/admin/login' || hash === '#/admin/login' || hash.includes('/admin/login');
+      setIsAdminRouteActive(isAdm);
+      
+      // If we exit the admin route, disable admin active state
+      if (!isAdm) {
+        setIsAdminActive(false);
+      }
+    };
+
+    window.addEventListener('popstate', handleLocationCheck);
+    window.addEventListener('hashchange', handleLocationCheck);
+    return () => {
+      window.removeEventListener('popstate', handleLocationCheck);
+      window.removeEventListener('hashchange', handleLocationCheck);
+    };
+  }, []);
+
+  // Automated Dual-Sync Database Synchronizer (LocalStorage + Supabase)
+  useEffect(() => {
+    if (!currentStudent || currentStudent.toLowerCase() === 'admin') return;
+    
+    // 1. Sync to LocalStorage (Offline Mode)
+    try {
+      const saved = localStorage.getItem('respira_student_records');
+      let records = saved ? JSON.parse(saved) : [];
+      
+      const idx = records.findIndex(r => r.username.toLowerCase() === currentStudent.toLowerCase());
+      if (idx !== -1) {
+        records[idx].exploredList = exploredList;
+        records[idx].lang = lang;
+        records[idx].timestamp = Date.now();
+      } else {
+        records.push({
+          username: currentStudent,
+          lang: lang,
+          exploredList: exploredList,
+          timestamp: Date.now()
+        });
+      }
+      localStorage.setItem('respira_student_records', JSON.stringify(records));
+    } catch (e) {
+      console.error('Failed to sync student session to localStorage:', e);
+    }
+
+    // 2. Sync to Supabase Database (Real-time Cloud Mode)
+    if (supabase) {
+      const syncToDb = async () => {
+        try {
+          const count = exploredList.length;
+          const { error } = await supabase
+            .from('respira_students')
+            .upsert({
+              username: currentStudent,
+              lang: lang,
+              explored_list: exploredList,
+              mastered_count: count,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'username' });
+
+          if (error) throw error;
+          console.log('[Supabase] Successfully synced student exploration logs.');
+        } catch (err) {
+          console.warn('[Supabase] Database sync failed:', err.message);
+        }
+      };
+
+      // Debounced or direct call
+      syncToDb();
+    }
+  }, [exploredList, currentStudent, lang]);
 
   const filteredParts = useMemo(() => {
     return partData.filter((part) => {
@@ -87,17 +234,69 @@ function App() {
     }
   }
 
-  function handleSelectLanguage(selectedLang) {
+  async function handleSelectLanguage(username, selectedLang) {
+    if (username.trim().toLowerCase() === 'admin') {
+      window.location.hash = '/admin/login';
+      return;
+    }
+    
+    const studentName = username.trim();
+    setCurrentStudent(studentName);
     setLang(selectedLang);
     setIsLanguageSelected(true);
     playChime('complete');
+
+    // 1. Fetch & Recover from Supabase DB (Real-time Cloud Mode)
+    let hasLoadedFromDb = false;
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('respira_students')
+          .select('explored_list, lang')
+          .eq('username', studentName)
+          .maybeSingle();
+
+        if (!error && data) {
+          const list = data.explored_list || ['trakea'];
+          setExploredList(list);
+          if (data.lang) setLang(data.lang);
+          if (list.length > 0) {
+            setActiveId(list[list.length - 1]);
+          }
+          hasLoadedFromDb = true;
+          console.log('[Supabase] Successfully recovered student profile progress.');
+        }
+      } catch (err) {
+        console.warn('[Supabase] Failed to retrieve student record:', err.message);
+      }
+    }
+
+    // 2. LocalStorage Fallback (Offline Mode)
+    if (!hasLoadedFromDb) {
+      try {
+        const saved = localStorage.getItem('respira_student_records');
+        const records = saved ? JSON.parse(saved) : [];
+        const existing = records.find(r => r.username.toLowerCase() === studentName.toLowerCase());
+        if (existing) {
+          setExploredList(existing.exploredList || ['trakea']);
+          if (existing.exploredList && existing.exploredList.length > 0) {
+            setActiveId(existing.exploredList[existing.exploredList.length - 1]);
+          }
+        } else {
+          setExploredList(['trakea']);
+          setActiveId('trakea');
+        }
+      } catch (e) {
+        console.error('Failed to load existing student record:', e);
+      }
+    }
     
     // Play warm vocal welcome!
     setTimeout(() => {
       if (selectedLang === 'id') {
-        speakTerm('Selamat datang di Respira 3D. Silakan ketuk bagian paru-paru untuk mulai belajar.', 'id');
+        speakTerm(`Selamat datang ${studentName}. Silakan ketuk bagian paru-paru untuk mulai belajar.`, 'id');
       } else {
-        speakTerm('Welcome to Respira 3D. Please click on the lung structures to begin learning.', 'en');
+        speakTerm(`Welcome ${studentName}. Please click on the lung structures to begin learning.`, 'en');
       }
     }, 600);
     
@@ -143,11 +342,54 @@ function App() {
     return translatedLayerOptions[idx !== -1 ? idx : 0];
   }, [activeLayer, translatedLayerOptions]);
 
+  // Route-based View Logic
+  if (isAdminRouteActive) {
+    if (!isAdminActive) {
+      return <AdminLogin onLoginSuccess={() => setIsAdminActive(true)} />;
+    }
+    return (
+      <AdminDashboard 
+        onClose={() => {
+          setIsAdminActive(false);
+          setIsAdminRouteActive(false);
+          window.location.hash = '';
+          window.location.pathname = '/';
+        }} 
+      />
+    );
+  }
+
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
       
       {/* Welcoming Screen modal */}
       {!isLanguageSelected && <WelcomeScreen onSelectLanguage={handleSelectLanguage} />}
+
+      {/* Admin Dashboard overlay fallback if accessed in-app without URL change */}
+      {isAdminActive && (
+        <AdminDashboard 
+          onClose={() => {
+            setIsAdminActive(false);
+            if (currentStudent === '' || currentStudent.toLowerCase() === 'admin') {
+              setIsLanguageSelected(false);
+              setCurrentStudent('');
+            }
+            playChime('click');
+          }} 
+        />
+      )}
+
+      {/* Dynamic Practice/Latihan Quiz Overlay panel */}
+      {isPracticeActive && (
+        <PracticeModule 
+          username={currentStudent || 'Student'} 
+          lang={lang} 
+          onClose={() => {
+            setIsPracticeActive(false);
+            playChime('click');
+          }} 
+        />
+      )}
 
       <main className="app-shell">
         {/* Mobile Header Toolbar */}
@@ -181,10 +423,109 @@ function App() {
               <X size={18} />
             </button>
           </div>
+
+          {/* Student Badge overlay */}
+          {currentStudent && (
+            <div className="student-profile-badge">
+              <div className="avatar">{currentStudent.slice(0, 2).toUpperCase()}</div>
+              <div>
+                <small>{lang === 'id' ? 'Siswa Aktif' : 'Active Student'}</small>
+                <strong>{currentStudent}</strong>
+              </div>
+              <button 
+                className="exit-profile-btn" 
+                onClick={() => {
+                  if (window.confirm(lang === 'id' ? 'Keluar dari profil ini?' : 'Logout from this profile?')) {
+                    setIsLanguageSelected(false);
+                    setCurrentStudent('');
+                    setExploredList(['trakea']);
+                    setActiveId('trakea');
+                    playChime('click');
+                  }
+                }}
+                title={lang === 'id' ? 'Keluar Sesi' : 'Logout Session'}
+              >
+                Logout
+              </button>
+            </div>
+          )}
+
           <p className="intro-copy">{t.brandDesc}</p>
 
           {/* Circular Progress & Mastered Legend Dashboard */}
           <MiniLegend counts={counts} exploredCount={exploredList.length} lang={lang} />
+
+          {/* Interactive Practice Mode/Latihan Button inside Sidebar */}
+          {currentStudent && (
+            <button 
+              className="sidebar-practice-btn"
+              onClick={() => {
+                setIsPracticeActive(true);
+                setIsSidebarOpen(false);
+                playChime('click');
+              }}
+            >
+              <Award size={15} style={{ marginRight: '6px' }} />
+              <span>{lang === 'id' ? 'Mulai Kuis Latihan' : 'Start Practice Quiz'}</span>
+            </button>
+          )}
+
+          {/* Student Quiz History Section */}
+          {currentStudent && (
+            <div className="quiz-history-panel">
+              <div className="quiz-history-header">
+                <div className="section-title">
+                  <Clock size={14} style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '6px' }} /> 
+                  <span style={{ verticalAlign: 'middle' }}>{lang === 'id' ? 'Riwayat Latihan' : 'Practice History'}</span>
+                </div>
+                {quizAttempts.length > 0 && (
+                  <span className="attempts-count-badge">
+                    {quizAttempts.length} {lang === 'id' ? 'Selesai' : 'Done'}
+                  </span>
+                )}
+              </div>
+              
+              <div className="quiz-history-list">
+                {quizAttempts.map((attempt, idx) => {
+                  const percent = Math.round((attempt.score / attempt.totalQuestions) * 100);
+                  let scoreClass = 'history-score-badge ';
+                  if (percent >= 80) scoreClass += 'high';
+                  else if (percent >= 50) scoreClass += 'mid';
+                  else scoreClass += 'low';
+
+                  let translatedCat = attempt.category;
+                  if (lang === 'en') {
+                    if (attempt.category === 'Semua') translatedCat = 'All Layers';
+                    else if (attempt.category === 'Saluran Napas') translatedCat = 'Airways';
+                    else if (attempt.category === 'Lobus Paru') translatedCat = 'Lung Lobes';
+                    else if (attempt.category === 'Fisura') translatedCat = 'Fissures';
+                    else if (attempt.category === 'Mikro') translatedCat = 'Micro';
+                    else if (attempt.category === 'Mekanisme Bernapas') translatedCat = 'Mechanics';
+                  }
+
+                  return (
+                    <div key={idx} className="quiz-history-item">
+                      <div className="history-info">
+                        <strong>{translatedCat}</strong>
+                        <small>{new Date(attempt.timestamp).toLocaleTimeString(lang === 'id' ? 'id-ID' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</small>
+                      </div>
+                      <div className={scoreClass}>
+                        {attempt.score}/{attempt.totalQuestions}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {quizAttempts.length === 0 && (
+                  <p className="history-empty-text">
+                    {lang === 'id'
+                      ? 'Belum ada kuis diselesaikan.'
+                      : 'No quizzes completed yet.'}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="search-box">
             <Search size={17} />
@@ -239,10 +580,11 @@ function App() {
               <strong>{t.toolbarTitle}</strong>
             </div>
             <div className="toolbar-actions">
+
               {/* Dynamic Header Quick Language Switcher */}
               <div className="language-selector-pill">
-                <button className={`lang-pill-btn ${lang === 'id' ? 'active' : ''}`} onClick={() => handleSelectLanguage('id')}>ID</button>
-                <button className={`lang-pill-btn ${lang === 'en' ? 'active' : ''}`} onClick={() => handleSelectLanguage('en')}>EN</button>
+                <button className={`lang-pill-btn ${lang === 'id' ? 'active' : ''}`} onClick={() => handleSelectLanguage(currentStudent || 'Student', 'id')}>ID</button>
+                <button className={`lang-pill-btn ${lang === 'en' ? 'active' : ''}`} onClick={() => handleSelectLanguage(currentStudent || 'Student', 'en')}>EN</button>
               </div>
 
               {/* Dynamic Voice Guide ON/OFF Toggle switch */}
