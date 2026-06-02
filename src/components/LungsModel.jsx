@@ -47,39 +47,46 @@ export default function LungsModel({ onSurfaceClick, activePart, breathingRate }
   React.useEffect(() => {
     scene.traverse((object) => {
       if (object.isMesh) {
-        const isAirway = object.name.toLowerCase().includes('part01');
-        const isLobe = object.name.toLowerCase().includes('part02');
+        const objName = object.name.toLowerCase();
+        const isAirway = objName.includes('part01') || objName.includes('trakea') || objName.includes('bronkus');
+        const isLobe = objName.includes('part02') || objName.includes('lobus') || objName.includes('paru');
         
-        object.material.roughness = 0.44;
-        object.material.metalness = 0.08;
+        if (isAirway) {
+          object.material.roughness = 0.35;
+          object.material.metalness = 0.1;
+        } else {
+          object.material.roughness = 0.15; // glassy finish for lobes
+          object.material.metalness = 0.05;
+        }
 
         if (!activePart) {
-          object.material.opacity = isAirway ? 0.94 : 0.82;
+          object.material.opacity = isAirway ? 1.0 : 0.18;
           object.material.emissive.setHex(0x000000);
         } else {
-          const isAirwayPart = activePart.layer.id === 'Saluran Napas' || activePart.layer.id === 'Mikro';
-          const isLobePart = activePart.layer.id === 'Lobus Paru' || activePart.layer.id === 'Fisura';
+          const activeIdNorm = activePart.id.toLowerCase().replace(/[\W_]/g, '');
+          const objNameNorm = objName.replace(/[\W_]/g, '');
 
-          if (isAirwayPart) {
-            if (isAirway) {
-              object.material.opacity = 1.0;
-              object.material.emissive.set(activePart.color).multiplyScalar(0.48);
-              object.material.roughness = 0.22;
-            } else {
-              object.material.opacity = 0.08;
-              object.material.emissive.setHex(0x000000);
-            }
-          } else if (isLobePart) {
-            if (isLobe) {
-              object.material.opacity = 0.88;
-              object.material.emissive.set(activePart.color).multiplyScalar(0.28);
-              object.material.roughness = 0.32;
-            } else {
-              object.material.opacity = 0.12;
-              object.material.emissive.setHex(0x000000);
-            }
+          // Match logic: check if name matches or contains ID
+          let isCurrentPart = objNameNorm.includes(activeIdNorm) || activeIdNorm.includes(objNameNorm);
+
+          // Handle special anatomical mappings
+          if (activePart.id === 'lobus-medial-kanan' && objNameNorm.includes('lobusmediuskanan')) {
+            isCurrentPart = true;
+          }
+          if (activePart.id === 'trakea' && objNameNorm.includes('trakea')) {
+            isCurrentPart = true;
+          }
+          if (activePart.id.startsWith('bronkus') && objNameNorm.includes('bronkus')) {
+            isCurrentPart = true;
+          }
+
+          if (isCurrentPart) {
+            object.material.opacity = 1.0;
+            object.material.emissive.set(activePart.color).multiplyScalar(0.48);
+            object.material.roughness = isAirway ? 0.22 : 0.32;
           } else {
-            object.material.opacity = 0.45;
+            // Fade out other non-selected structures
+            object.material.opacity = isAirway ? 0.08 : 0.12;
             object.material.emissive.setHex(0x000000);
           }
         }

@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Bounds, ContactShadows, Environment, Html, OrbitControls } from '@react-three/drei';
+import { Bounds, useBounds, ContactShadows, Environment, Html, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import LungsModel from './LungsModel';
 import Hotspot from './Hotspot';
@@ -95,6 +95,44 @@ function BreathingRings({ breathingRate }) {
   );
 }
 
+function BoundsController({ activePart, parentGroupRef }) {
+  const bounds = useBounds();
+
+  React.useEffect(() => {
+    if (parentGroupRef.current) {
+      if (activePart) {
+        let targetMesh = null;
+        parentGroupRef.current.traverse((child) => {
+          if (child.isMesh && !targetMesh) {
+            const objName = child.name.toLowerCase();
+            const objNameNorm = objName.replace(/[\W_]/g, '');
+            const activeIdNorm = activePart.id.toLowerCase().replace(/[\W_]/g, '');
+            
+            let matches = objNameNorm.includes(activeIdNorm) || activeIdNorm.includes(objNameNorm);
+            if (activePart.id === 'lobus-medial-kanan' && objNameNorm.includes('lobusmediuskanan')) matches = true;
+            if (activePart.id === 'trakea' && objNameNorm.includes('trakea')) matches = true;
+            if (activePart.id.startsWith('bronkus') && objNameNorm.includes('bronkus')) matches = true;
+
+            if (matches) {
+              targetMesh = child;
+            }
+          }
+        });
+
+        if (targetMesh) {
+          bounds.refresh(targetMesh).clip().fit();
+        } else {
+          bounds.refresh(parentGroupRef.current).clip().fit();
+        }
+      } else {
+        bounds.refresh(parentGroupRef.current).clip().fit();
+      }
+    }
+  }, [activePart, bounds, parentGroupRef]);
+
+  return null;
+}
+
 export default function LungScene({ parts, activeId, activePart, onSelect, showLabels, setNotice, breathingRate, lang }) {
   const parentGroupRef = React.useRef();
 
@@ -112,6 +150,7 @@ export default function LungScene({ parts, activeId, activePart, onSelect, showL
       <Suspense fallback={<Loader />}>
         <gridHelper args={[6, 30, '#cbd5e1', '#e2e8f0']} position={[0, -1.3, 0]} />
         <Bounds fit clip observe margin={1.28}>
+          <BoundsController activePart={activePart} parentGroupRef={parentGroupRef} />
           <group ref={parentGroupRef} scale={7.2} position={[0, -1.03, 0]} rotation={[0.02, 0, 0]}>
             <LungsModel 
               activePart={activePart}
@@ -121,8 +160,10 @@ export default function LungScene({ parts, activeId, activePart, onSelect, showL
                   // Transform world click coordinates to group's local coordinates
                   const localPoint = parentGroupRef.current.worldToLocal(worldPoint.clone());
                   
-                  const isAirwayMesh = meshName.toLowerCase().includes('part01');
-                  const isLobeMesh = meshName.toLowerCase().includes('part02');
+                  const isAirwayMesh = meshName.toLowerCase().includes('part01') || 
+                                       meshName.toLowerCase().includes('trakea') || 
+                                       meshName.toLowerCase().includes('bronkus');
+                  const isLobeMesh = !isAirwayMesh;
                   
                   // Filter parts by category to prevent cross-matching (e.g. clicking airway but selecting lobe)
                   const candidateParts = parts.filter(part => {
