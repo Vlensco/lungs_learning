@@ -80,6 +80,32 @@ export default function LungsModel({ onSurfaceClick, activePart, breathingRate }
             isCurrentPart = true;
           }
 
+          // Fissure highlights: light up adjoining lobes to define boundary lines
+          if (activePart.id === 'fisura-horizontal-kanan') {
+            if (objNameNorm.includes('lobussuperiorkanan') || objNameNorm.includes('lobusmediuskanan')) {
+              isCurrentPart = true;
+            }
+          }
+          if (activePart.id === 'fisura-oblique-kanan') {
+            if (objNameNorm.includes('lobusinferiorkanan') || objNameNorm.includes('lobusmediuskanan') || objNameNorm.includes('lobussuperiorkanan')) {
+              isCurrentPart = true;
+            }
+          }
+          if (activePart.id === 'fisura-oblique-kiri') {
+            if (objNameNorm.includes('lobussuperiorkiri') || objNameNorm.includes('lobusinferiorkiri')) {
+              isCurrentPart = true;
+            }
+          }
+
+          // Microscopic highlights: light up the bronchial tree as their anatomical origin
+          const isMicroPart = activePart.layer.id === 'Mikro' || 
+                              activePart.id === 'bronkiolus' || 
+                              activePart.id === 'otot-polos-bronkiolus' || 
+                              activePart.id === 'sakus-alveolar';
+          if (isMicroPart && objNameNorm.includes('bronkus')) {
+            isCurrentPart = true;
+          }
+
           if (isCurrentPart) {
             object.material.opacity = 1.0;
             object.material.emissive.set(activePart.color).multiplyScalar(0.48);

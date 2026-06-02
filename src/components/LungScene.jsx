@@ -113,6 +113,18 @@ function BoundsController({ activePart, parentGroupRef }) {
             if (activePart.id === 'trakea' && objNameNorm.includes('trakea')) matches = true;
             if (activePart.id.startsWith('bronkus') && objNameNorm.includes('bronkus')) matches = true;
 
+            // Fissure zoom target mappings: focus on the adjoining lobes
+            if (activePart.id === 'fisura-horizontal-kanan' && (objNameNorm.includes('lobussuperiorkanan') || objNameNorm.includes('lobusmediuskanan'))) matches = true;
+            if (activePart.id === 'fisura-oblique-kanan' && (objNameNorm.includes('lobusinferiorkanan') || objNameNorm.includes('lobusmediuskanan') || objNameNorm.includes('lobussuperiorkanan'))) matches = true;
+            if (activePart.id === 'fisura-oblique-kiri' && (objNameNorm.includes('lobussuperiorkiri') || objNameNorm.includes('lobusinferiorkiri'))) matches = true;
+
+            // Microscopic zoom target mappings: focus on the bronchial tree
+            const isMicro = activePart.layer.id === 'Mikro' || 
+                            activePart.id === 'bronkiolus' || 
+                            activePart.id === 'otot-polos-bronkiolus' || 
+                            activePart.id === 'sakus-alveolar';
+            if (isMicro && objNameNorm.includes('bronkus')) matches = true;
+
             if (matches) {
               targetMesh = child;
             }
