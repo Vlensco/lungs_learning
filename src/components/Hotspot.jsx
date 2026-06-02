@@ -40,6 +40,8 @@ function PulsingAura({ color, active }) {
 }
 
 export default function Hotspot({ part, active, showLabels, onSelect, lang }) {
+  if (!showLabels) return null;
+
   return (
     <group position={part.position}>
       <PulsingAura color={part.color} active={active} />
