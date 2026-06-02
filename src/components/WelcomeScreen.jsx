@@ -66,7 +66,7 @@ export default function WelcomeScreen({ onSelectLanguage }) {
           <input
             id="username-input"
             type="text"
-            placeholder="Masukkan Nama Anda... (Ketik 'admin' untuk Panel Admin)"
+            placeholder="Masukkan nama Anda... / Enter your name..."
             value={username}
             onChange={(e) => {
               setUsername(e.target.value);
@@ -95,9 +95,6 @@ export default function WelcomeScreen({ onSelectLanguage }) {
         </div>
 
         <div className="welcome-footer-row">
-          <button className="admin-portal-link" onClick={handleAdminQuickClick}>
-            🔒 Masuk sebagai Admin (Admin Portal)
-          </button>
           <p className="welcome-footer">RESPIRA 3D Learning Module • Inspired by TeachMeAnatomy</p>
         </div>
       </div>

@@ -234,6 +234,39 @@ function App() {
     }
   }
 
+  async function handleChangeLanguage(selectedLang) {
+    setLang(selectedLang);
+    playChime('click');
+    
+    if (currentStudent) {
+      // 1. Update LocalStorage
+      try {
+        const saved = localStorage.getItem('respira_student_records');
+        const records = saved ? JSON.parse(saved) : [];
+        const updated = records.map(r => 
+          r.username.toLowerCase() === currentStudent.toLowerCase() 
+            ? { ...r, lang: selectedLang } 
+            : r
+        );
+        localStorage.setItem('respira_student_records', JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save language locally:', e);
+      }
+
+      // 2. Update Supabase
+      if (supabase) {
+        try {
+          await supabase
+            .from('respira_students')
+            .update({ lang: selectedLang })
+            .eq('username', currentStudent);
+        } catch (err) {
+          console.warn('[Supabase] Failed to update language preference:', err.message);
+        }
+      }
+    }
+  }
+
   async function handleSelectLanguage(username, selectedLang) {
     if (username.trim().toLowerCase() === 'admin') {
       window.location.hash = '/admin/login';
@@ -583,8 +616,8 @@ function App() {
 
               {/* Dynamic Header Quick Language Switcher */}
               <div className="language-selector-pill">
-                <button className={`lang-pill-btn ${lang === 'id' ? 'active' : ''}`} onClick={() => handleSelectLanguage(currentStudent || 'Student', 'id')}>ID</button>
-                <button className={`lang-pill-btn ${lang === 'en' ? 'active' : ''}`} onClick={() => handleSelectLanguage(currentStudent || 'Student', 'en')}>EN</button>
+                <button className={`lang-pill-btn ${lang === 'id' ? 'active' : ''}`} onClick={() => handleChangeLanguage('id')}>ID</button>
+                <button className={`lang-pill-btn ${lang === 'en' ? 'active' : ''}`} onClick={() => handleChangeLanguage('en')}>EN</button>
               </div>
 
               {/* Dynamic Voice Guide ON/OFF Toggle switch */}
