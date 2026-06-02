@@ -1,3 +1,4 @@
+// Interactive Human Lungs 3D Model Component - Lungs Learning
 import React, { useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
