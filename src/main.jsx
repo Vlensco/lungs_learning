@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Layers3, Microscope, Rotate3D, Search, X, Volume2, Menu, Award, Clock } from 'lucide-react';
+import { Layers3, Microscope, Rotate3D, Search, X, Volume2, Menu, Award, Clock, ArrowLeft, ArrowRight } from 'lucide-react';
 import './styles.css';
 
 // Modular data, utilities, and components
@@ -15,12 +15,65 @@ import AdminLogin from './components/AdminLogin';
 import PracticeModule from './components/PracticeModule';
 import { supabase } from './utils/supabaseClient';
 
+// New Restructure Components
+import HomePage from './components/HomePage';
+import SegmentQuiz from './components/SegmentQuiz';
+import SegmentMaterial from './components/SegmentMaterial';
+import CertificateModal from './components/CertificateModal';
+
 function App() {
   const [lang, setLang] = useState('id'); // 'id' or 'en'
   const [isLanguageSelected, setIsLanguageSelected] = useState(false); // start selection flag
   const [currentStudent, setCurrentStudent] = useState('');
   const [isAdminActive, setIsAdminActive] = useState(false);
   const [isPracticeActive, setIsPracticeActive] = useState(false);
+
+  // New Restructure States
+  const [currentView, setCurrentView] = useState('welcome');
+  const [activeSegment, setActiveSegment] = useState('Saluran Napas');
+  const [showCertificate, setShowCertificate] = useState(false);
+  const [segmentProgress, setSegmentProgress] = useState({
+    'Saluran Napas': { status: 'not_started', pretest: null, posttest: null },
+    'Lobus Paru': { status: 'not_started', pretest: null, posttest: null },
+    'Fisura': { status: 'not_started', pretest: null, posttest: null },
+    'Mikro': { status: 'not_started', pretest: null, posttest: null },
+    'Mekanisme Bernapas': { status: 'not_started', pretest: null, posttest: null }
+  });
+
+  // Rebuild Segment Progress based on completed quiz attempts
+  const rebuildSegmentProgress = (attemptsList) => {
+    const defaultProgress = {
+      'Saluran Napas': { status: 'not_started', pretest: null, posttest: null },
+      'Lobus Paru': { status: 'not_started', pretest: null, posttest: null },
+      'Fisura': { status: 'not_started', pretest: null, posttest: null },
+      'Mikro': { status: 'not_started', pretest: null, posttest: null },
+      'Mekanisme Bernapas': { status: 'not_started', pretest: null, posttest: null }
+    };
+
+    // Sort attempts chronologically
+    const sorted = [...attemptsList].sort((a, b) => a.timestamp - b.timestamp);
+
+    sorted.forEach(attempt => {
+      const cat = attempt.category;
+      if (cat.startsWith('Pre-test: ')) {
+        const segId = cat.replace('Pre-test: ', '');
+        if (defaultProgress[segId] !== undefined) {
+          defaultProgress[segId].pretest = attempt.score;
+          if (defaultProgress[segId].status === 'not_started') {
+            defaultProgress[segId].status = 'in_progress';
+          }
+        }
+      } else if (cat.startsWith('Kuis: ')) {
+        const segId = cat.replace('Kuis: ', '');
+        if (defaultProgress[segId] !== undefined) {
+          defaultProgress[segId].posttest = attempt.score;
+          defaultProgress[segId].status = 'completed';
+        }
+      }
+    });
+
+    setSegmentProgress(defaultProgress);
+  };
 
   // Clean URL Routing state
   const [isAdminRouteActive, setIsAdminRouteActive] = useState(() => {
@@ -67,6 +120,7 @@ function App() {
             timestamp: new Date(item.created_at).getTime()
           }));
           setQuizAttempts(formatted);
+          rebuildSegmentProgress(formatted);
           loadedFromDb = true;
           console.log('[Supabase] Successfully loaded student quiz history.');
         }
@@ -84,13 +138,86 @@ function App() {
             .filter(a => a.username.toLowerCase() === studentName.toLowerCase())
             .sort((a, b) => b.timestamp - a.timestamp);
           setQuizAttempts(studentAttempts);
+          rebuildSegmentProgress(studentAttempts);
         } else {
           setQuizAttempts([]);
+          rebuildSegmentProgress([]);
         }
       } catch (e) {
         console.error('Failed to load local attempts history:', e);
       }
     }
+  };
+
+  // Log Practice Attempt to localstorage + Supabase
+  const logPracticeAttempt = async (category, score, totalQuestions) => {
+    const total = totalQuestions;
+    
+    // 1. LocalStorage Sync
+    try {
+      const savedAttempts = localStorage.getItem('respira_practice_attempts') || '[]';
+      const attempts = JSON.parse(savedAttempts);
+      attempts.push({
+        username: currentStudent,
+        category: category,
+        score: score,
+        totalQuestions: total,
+        timestamp: Date.now()
+      });
+      localStorage.setItem('respira_practice_attempts', JSON.stringify(attempts));
+
+      // Update student average score in local session
+      const savedRecords = localStorage.getItem('respira_student_records') || '[]';
+      const records = JSON.parse(savedRecords);
+      const studentIdx = records.findIndex(r => r.username.toLowerCase() === currentStudent.toLowerCase());
+      if (studentIdx !== -1) {
+        const studentAttempts = attempts.filter(a => a.username.toLowerCase() === currentStudent.toLowerCase());
+        const totalQuizScores = studentAttempts.reduce((sum, a) => sum + Math.round((a.score / a.totalQuestions) * 100), 0);
+        records[studentIdx].average_score = Math.round(totalQuizScores / studentAttempts.length);
+        localStorage.setItem('respira_student_records', JSON.stringify(records));
+      }
+    } catch (e) {
+      console.error('Failed to write attempt to localStorage:', e);
+    }
+
+    // 2. Supabase Sync
+    if (supabase) {
+      try {
+        const { error: attemptError } = await supabase
+          .from('respira_practice_attempts')
+          .insert({
+            username: currentStudent,
+            category: category,
+            score: score,
+            total_questions: total
+          });
+
+        if (attemptError) throw attemptError;
+
+        // Fetch all attempts for this student to compute the new average score
+        const { data: dbAttempts, error: fetchError } = await supabase
+          .from('respira_practice_attempts')
+          .select('score, total_questions')
+          .eq('username', currentStudent);
+
+        if (!fetchError && dbAttempts && dbAttempts.length > 0) {
+          const totalScores = dbAttempts.reduce((sum, a) => sum + Math.round((a.score / a.total_questions) * 100), 0);
+          const newAvg = Math.round(totalScores / dbAttempts.length);
+
+          // Update student average_score in student profile table
+          await supabase
+            .from('respira_students')
+            .update({ average_score: newAvg })
+            .eq('username', currentStudent);
+        }
+        console.log('[Supabase] Successfully saved practice quiz report.');
+      } catch (err) {
+        console.warn('[Supabase] Failed to sync attempts to database:', err.message);
+      }
+    }
+
+    // Refresh attempts
+    await fetchStudentAttempts(currentStudent);
   };
 
   // Sync quiz history when practice modal closes or student logs in
@@ -277,9 +404,11 @@ function App() {
     setCurrentStudent(studentName);
     setLang(selectedLang);
     setIsLanguageSelected(true);
+    setCurrentView('home');
     playChime('complete');
 
-    // 1. Fetch & Recover from Supabase DB (Real-time Cloud Mode)
+    // Fetch attempts and scores immediately
+    await fetchStudentAttempts(studentName);
     let hasLoadedFromDb = false;
     if (supabase) {
       try {
@@ -327,9 +456,9 @@ function App() {
     // Play warm vocal welcome!
     setTimeout(() => {
       if (selectedLang === 'id') {
-        speakTerm(`Selamat datang ${studentName}. Silakan ketuk bagian paru-paru untuk mulai belajar.`, 'id');
+        speakTerm(`Selamat datang ${studentName}. Silakan pilih segmen pembelajaran untuk mulai belajar.`, 'id');
       } else {
-        speakTerm(`Welcome ${studentName}. Please click on the lung structures to begin learning.`, 'en');
+        speakTerm(`Welcome ${studentName}. Please select a learning segment to begin.`, 'en');
       }
     }, 600);
     
@@ -375,6 +504,25 @@ function App() {
     return translatedLayerOptions[idx !== -1 ? idx : 0];
   }, [activeLayer, translatedLayerOptions]);
 
+  const segmentParts = useMemo(() => {
+    return partData.filter(p => p.layer.id === activeSegment);
+  }, [activeSegment]);
+
+  const segmentExploredCount = useMemo(() => {
+    return segmentParts.filter(p => exploredList.includes(p.id)).length;
+  }, [segmentParts, exploredList]);
+
+  const handleProceedToPosttest = () => {
+    const prog = segmentProgress[activeSegment] || { status: 'not_started', pretest: null, posttest: null };
+    if (prog.posttest !== null) {
+      if (window.confirm(lang === 'id' ? 'Anda sudah mengerjakan kuis ini. Kembali ke halaman utama?' : 'You have already taken this quiz. Return to homepage?')) {
+        setCurrentView('home');
+      }
+    } else {
+      setCurrentView('posttest');
+    }
+  };
+
   // Route-based View Logic
   if (isAdminRouteActive) {
     if (!isAdminActive) {
@@ -392,11 +540,13 @@ function App() {
     );
   }
 
+  // 1. Welcoming Screen - if not logged in
+  if (!isLanguageSelected) {
+    return <WelcomeScreen onSelectLanguage={handleSelectLanguage} />;
+  }
+
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
-      
-      {/* Welcoming Screen modal */}
-      {!isLanguageSelected && <WelcomeScreen onSelectLanguage={handleSelectLanguage} />}
 
       {/* Admin Dashboard overlay fallback if accessed in-app without URL change */}
       {isAdminActive && (
@@ -412,302 +562,322 @@ function App() {
         />
       )}
 
-      {/* Dynamic Practice/Latihan Quiz Overlay panel */}
-      {isPracticeActive && (
-        <PracticeModule 
-          username={currentStudent || 'Student'} 
-          lang={lang} 
-          onClose={() => {
-            setIsPracticeActive(false);
+      {/* Home Page View */}
+      {currentView === 'home' && (
+        <HomePage 
+          username={currentStudent}
+          lang={lang}
+          segmentProgress={segmentProgress}
+          onStartSegment={(segId) => {
+            setActiveSegment(segId);
+            const prog = segmentProgress[segId] || { status: 'not_started', pretest: null, posttest: null };
+            if (prog.pretest === null) {
+              setCurrentView('pretest');
+            } else {
+              setCurrentView('material');
+            }
             playChime('click');
-          }} 
+          }}
+          onShowCertificate={() => {
+            setShowCertificate(true);
+            playChime('complete');
+          }}
+          onLogout={() => {
+            setIsLanguageSelected(false);
+            setCurrentStudent('');
+            setExploredList(['trakea']);
+            setActiveId('trakea');
+            setCurrentView('welcome');
+            playChime('click');
+          }}
         />
       )}
 
-      <main className="app-shell">
-        {/* Mobile Header Toolbar */}
-        <header className="mobile-header">
-          <button className="menu-btn" onClick={() => setIsSidebarOpen(true)}>
-            <Menu size={20} />
-            <span>{t.menuBtn}</span>
-          </button>
-          <span className="mobile-brand">RESPIRA 3D</span>
-          <button 
-            className={`sheet-toggle-btn ${isSheetExpanded ? 'active' : ''}`}
-            onClick={() => setIsSheetExpanded(!isSheetExpanded)}
-          >
-            {activePart ? activePart.name[lang] : t.detailPill}
-          </button>
-        </header>
+      {/* Pre-test View */}
+      {currentView === 'pretest' && (
+        <SegmentQuiz 
+          segmentId={activeSegment}
+          type="pretest"
+          lang={lang}
+          username={currentStudent}
+          onComplete={async (score) => {
+            await logPracticeAttempt(`Pre-test: ${activeSegment}`, score, 5);
+            setCurrentView('material');
+          }}
+          onClose={() => {
+            setCurrentView('home');
+            playChime('click');
+          }}
+        />
+      )}
 
-        {/* Backdrop for mobile drawer */}
-        {isSidebarOpen && <div className="sidebar-backdrop" onClick={() => setIsSidebarOpen(false)} />}
+      {/* Material View */}
+      {currentView === 'material' && (
+        <SegmentMaterial 
+          segmentId={activeSegment}
+          lang={lang}
+          onNext={() => {
+            setActiveLayer(activeSegment);
+            const segParts = partData.filter(p => p.layer.id === activeSegment);
+            if (segParts.length > 0) {
+              setActiveId(segParts[0].id);
+            }
+            setCurrentView('3d_view');
+            playChime('click');
+          }}
+          onClose={() => {
+            setCurrentView('home');
+            playChime('click');
+          }}
+        />
+      )}
 
-        <aside className={`left-panel glass-panel ${isSidebarOpen ? 'open' : ''}`}>
-          <div className="brand-row">
-            <div className="brand-mark">
-              <LungsIcon size={24} color="#0284c7" />
-            </div>
-            <div>
-              <p>{t.brandSubtitle}</p>
-              <h1>{t.brandTitle}</h1>
-            </div>
-            <button className="close-sidebar-btn" onClick={() => setIsSidebarOpen(false)}>
-              <X size={18} />
-            </button>
+      {/* Post-test View */}
+      {currentView === 'posttest' && (
+        <SegmentQuiz 
+          segmentId={activeSegment}
+          type="posttest"
+          lang={lang}
+          username={currentStudent}
+          pretestScore={segmentProgress[activeSegment]?.pretest}
+          onComplete={async (score) => {
+            await logPracticeAttempt(`Kuis: ${activeSegment}`, score, 5);
+            setCurrentView('home');
+          }}
+          onClose={() => {
+            setCurrentView('home');
+            playChime('click');
+          }}
+        />
+      )}
+
+      {/* Certificate Modal */}
+      {showCertificate && (
+        <CertificateModal 
+          username={currentStudent}
+          lang={lang}
+          segmentProgress={segmentProgress}
+          onClose={() => {
+            setShowCertificate(false);
+            playChime('click');
+          }}
+          onReset={() => {
+            setShowCertificate(false);
+            setIsLanguageSelected(false);
+            setCurrentStudent('');
+            setExploredList(['trakea']);
+            setActiveId('trakea');
+            setCurrentView('welcome');
+            playChime('click');
+          }}
+        />
+      )}
+
+      {/* 3D Simulation Viewer (only rendered in '3d_view' view state) */}
+      {currentView === '3d_view' && (
+        <>
+          {/* Floating progress banner for active segment */}
+          <div className="viewer-progress-banner">
+            <Microscope size={14} color="#0284c7" />
+            <span>
+              {lang === 'id' ? 'Segmen:' : 'Segment:'} <strong>{activeSegment}</strong> · {lang === 'id' ? 'Eksplorasi:' : 'Explored:'} <strong>{segmentExploredCount} / {segmentParts.length}</strong>
+            </span>
           </div>
 
-          {/* Student Badge overlay */}
-          {currentStudent && (
-            <div className="student-profile-badge">
-              <div className="avatar">{currentStudent.slice(0, 2).toUpperCase()}</div>
-              <div>
-                <small>{lang === 'id' ? 'Siswa Aktif' : 'Active Student'}</small>
-                <strong>{currentStudent}</strong>
-              </div>
-              <button 
-                className="exit-profile-btn" 
-                onClick={() => {
-                  if (window.confirm(lang === 'id' ? 'Keluar dari profil ini?' : 'Logout from this profile?')) {
-                    setIsLanguageSelected(false);
-                    setCurrentStudent('');
-                    setExploredList(['trakea']);
-                    setActiveId('trakea');
-                    playChime('click');
-                  }
-                }}
-                title={lang === 'id' ? 'Keluar Sesi' : 'Logout Session'}
-              >
-                Logout
+          {/* Floating proceed to post-test button */}
+          <button className="viewer-next-step-btn" onClick={handleProceedToPosttest}>
+            <span>{lang === 'id' ? 'Lanjut ke Kuis Segmen' : 'Proceed to Segment Quiz'}</span>
+            <ArrowRight size={15} />
+          </button>
+
+          <main className="app-shell">
+            {/* Mobile Header Toolbar */}
+            <header className="mobile-header">
+              <button className="menu-btn" onClick={() => setIsSidebarOpen(true)}>
+                <Menu size={20} />
+                <span>{t.menuBtn}</span>
               </button>
-            </div>
-          )}
-
-          <p className="intro-copy">{t.brandDesc}</p>
-
-          {/* Circular Progress & Mastered Legend Dashboard */}
-          <MiniLegend counts={counts} exploredCount={exploredList.length} lang={lang} />
-
-          {/* Interactive Practice Mode/Latihan Button inside Sidebar */}
-          {currentStudent && (
-            <button 
-              className="sidebar-practice-btn"
-              onClick={() => {
-                setIsPracticeActive(true);
-                setIsSidebarOpen(false);
-                playChime('click');
-              }}
-            >
-              <Award size={15} style={{ marginRight: '6px' }} />
-              <span>{lang === 'id' ? 'Mulai Kuis Latihan' : 'Start Practice Quiz'}</span>
-            </button>
-          )}
-
-          {/* Student Quiz History Section */}
-          {currentStudent && (
-            <div className="quiz-history-panel">
-              <div className="quiz-history-header">
-                <div className="section-title">
-                  <Clock size={14} style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '6px' }} /> 
-                  <span style={{ verticalAlign: 'middle' }}>{lang === 'id' ? 'Riwayat Latihan' : 'Practice History'}</span>
-                </div>
-                {quizAttempts.length > 0 && (
-                  <span className="attempts-count-badge">
-                    {quizAttempts.length} {lang === 'id' ? 'Selesai' : 'Done'}
-                  </span>
-                )}
-              </div>
-              
-              <div className="quiz-history-list">
-                {quizAttempts.map((attempt, idx) => {
-                  const percent = Math.round((attempt.score / attempt.totalQuestions) * 100);
-                  let scoreClass = 'history-score-badge ';
-                  if (percent >= 80) scoreClass += 'high';
-                  else if (percent >= 50) scoreClass += 'mid';
-                  else scoreClass += 'low';
-
-                  let translatedCat = attempt.category;
-                  if (lang === 'en') {
-                    if (attempt.category === 'Semua') translatedCat = 'All Layers';
-                    else if (attempt.category === 'Saluran Napas') translatedCat = 'Airways';
-                    else if (attempt.category === 'Lobus Paru') translatedCat = 'Lung Lobes';
-                    else if (attempt.category === 'Fisura') translatedCat = 'Fissures';
-                    else if (attempt.category === 'Mikro') translatedCat = 'Micro';
-                    else if (attempt.category === 'Mekanisme Bernapas') translatedCat = 'Mechanics';
-                  }
-
-                  return (
-                    <div key={idx} className="quiz-history-item">
-                      <div className="history-info">
-                        <strong>{translatedCat}</strong>
-                        <small>{new Date(attempt.timestamp).toLocaleTimeString(lang === 'id' ? 'id-ID' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</small>
-                      </div>
-                      <div className={scoreClass}>
-                        {attempt.score}/{attempt.totalQuestions}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {quizAttempts.length === 0 && (
-                  <p className="history-empty-text">
-                    {lang === 'id'
-                      ? 'Belum ada kuis diselesaikan.'
-                      : 'No quizzes completed yet.'}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="search-box">
-            <Search size={17} />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.searchPlaceholder} />
-          </div>
-          
-          <div className="layer-filter">
-            <div className="section-title"><Layers3 size={16} /> {t.layerFilterTitle}</div>
-            <div className="chip-grid">
-              {translatedLayerOptions.map((layerName, idx) => (
-                <button 
-                  key={layerName} 
-                  className={activeCategoryTranslated === layerName ? 'chip active' : 'chip'} 
-                  onClick={() => selectCategoryFilter(idx)}
-                >
-                  {layerName}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="part-list">
-            {filteredParts.map((part) => {
-              const isLearned = exploredList.includes(part.id);
-              return (
-                <button 
-                  key={part.id} 
-                  className={activeId === part.id ? 'part-row active' : 'part-row'} 
-                  onClick={() => {
-                    selectPart(part.id);
-                    setIsSidebarOpen(false);
-                  }}
-                  style={{ '--accent': part.color }}
-                >
-                  <span className="dot" style={{ background: part.color }} />
-                  <span className="part-text-box">
-                    <strong>{part.name[lang]}</strong>
-                    <small>{part.english}</small>
-                  </span>
-                  {isLearned && <span className="learned-badge">✓</span>}
-                </button>
-              );
-            })}
-            {filteredParts.length === 0 && <p className="empty-state">{t.emptyText}</p>}
-          </div>
-        </aside>
-
-        <section className="viewer-panel">
-          <div className="top-toolbar glass-panel">
-            <div>
-              <p className="eyebrow">{t.toolbarSubtitle}</p>
-              <strong>{t.toolbarTitle}</strong>
-            </div>
-            <div className="toolbar-actions">
-
-              {/* Dynamic Header Quick Language Switcher */}
-              <div className="language-selector-pill">
-                <button className={`lang-pill-btn ${lang === 'id' ? 'active' : ''}`} onClick={() => handleChangeLanguage('id')}>ID</button>
-                <button className={`lang-pill-btn ${lang === 'en' ? 'active' : ''}`} onClick={() => handleChangeLanguage('en')}>EN</button>
-              </div>
-
-              {/* Dynamic Voice Guide ON/OFF Toggle switch */}
+              <span className="mobile-brand">RESPIRA 3D</span>
               <button 
-                className={`soft-button voice-toggle-btn ${isVoiceEnabled ? 'active' : ''}`} 
+                className={`sheet-toggle-btn ${isSheetExpanded ? 'active' : ''}`}
+                onClick={() => setIsSheetExpanded(!isSheetExpanded)}
+              >
+                {activePart ? activePart.name[lang] : t.detailPill}
+              </button>
+            </header>
+
+            {/* Backdrop for mobile drawer */}
+            {isSidebarOpen && <div className="sidebar-backdrop" onClick={() => setIsSidebarOpen(false)} />}
+
+            <aside className={`left-panel glass-panel ${isSidebarOpen ? 'open' : ''}`}>
+              
+              {/* Return to Dashboard back button */}
+              <button 
+                className="sidebar-practice-btn"
+                style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#475569', boxShadow: 'none', marginBottom: '14px' }}
                 onClick={() => {
-                  setIsVoiceEnabled(!isVoiceEnabled);
-                  if (isVoiceEnabled) {
-                    window.speechSynthesis.cancel();
-                  } else {
-                    speakTerm(lang === 'id' ? 'Asisten suara aktif' : 'Voice assistant active', lang);
-                  }
+                  setCurrentView('home');
                   playChime('click');
                 }}
-                title={lang === 'id' ? 'Aktifkan/Nonaktifkan Suara Asisten' : 'Toggle Voice Assistant'}
               >
-                <Volume2 size={14} style={{ marginRight: '6px', display: 'inline-block', verticalAlign: 'middle' }} />
-                <span>{isVoiceEnabled ? (lang === 'id' ? 'Suara: ON' : 'Voice: ON') : (lang === 'id' ? 'Suara: OFF' : 'Voice: OFF')}</span>
+                <ArrowLeft size={15} style={{ marginRight: '6px' }} />
+                <span>{lang === 'id' ? 'Kembali ke Beranda' : 'Return to Dashboard'}</span>
               </button>
 
-              <button className="soft-button" onClick={() => setShowLabels((value) => !value)}>
-                {showLabels ? t.toolbarHidePin : t.toolbarShowPin}
-              </button>
-              <span className="hint"><Rotate3D size={16} /> {t.toolbarHint}</span>
-            </div>
-          </div>
+              <div className="brand-row">
+                <div className="brand-mark">
+                  <LungsIcon size={24} color="#0284c7" />
+                </div>
+                <div>
+                  <p>{t.brandSubtitle}</p>
+                  <h1>{t.brandTitle}</h1>
+                </div>
+                <button className="close-sidebar-btn" onClick={() => setIsSidebarOpen(false)}>
+                  <X size={18} />
+                </button>
+              </div>
 
-          {/* Dynamic 3D Laboratory Scene */}
-          <LungScene
-            parts={filteredParts}
-            activeId={activeId}
-            activePart={activePart}
-            onSelect={selectPart}
-            showLabels={showLabels}
-            setNotice={setNotice}
-            breathingRate={breathingRate}
-            lang={lang}
-          />
-          
-          {/* Breathing Simulation Controller Panel */}
-          <div className="breathing-rate-controller glass-panel">
-            <span className="controller-title">{t.simulatorTitle}</span>
-            <div className="rate-selector-grid">
-              <button className={breathingRate === 0 ? 'rate-btn active hold' : 'rate-btn'} onClick={() => setBreathingRate(0)}>{t.simulatorHold}</button>
-              <button className={breathingRate === 1 ? 'rate-btn active normal' : 'rate-btn'} onClick={() => setBreathingRate(1)}>{t.simulatorNormal}</button>
-              <button className={breathingRate === 2 ? 'rate-btn active rapid' : 'rate-btn'} onClick={() => setBreathingRate(2)}>{t.simulatorRapid}</button>
-            </div>
-          </div>
+              <p className="intro-copy">{t.brandDesc}</p>
 
-          <div className="notice glass-panel">{notice}</div>
-        </section>
+              {/* Circular Progress & Mastered Legend Dashboard */}
+              <MiniLegend counts={counts} exploredCount={exploredList.length} lang={lang} />
 
-        {/* Floating sheet handler for mobile sheet */}
-        {isSheetExpanded && <div className="sheet-backdrop" onClick={() => setIsSheetExpanded(false)} />}
+              <div className="search-box">
+                <Search size={17} />
+                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.searchPlaceholder} />
+              </div>
+              
+              <div className="part-list">
+                {filteredParts.map((part) => {
+                  const isLearned = exploredList.includes(part.id);
+                  return (
+                    <button 
+                      key={part.id} 
+                      className={activeId === part.id ? 'part-row active' : 'part-row'} 
+                      onClick={() => {
+                        selectPart(part.id);
+                        setIsSidebarOpen(false);
+                      }}
+                      style={{ '--accent': part.color }}
+                    >
+                      <span className="dot" style={{ background: part.color }} />
+                      <span className="part-text-box">
+                        <strong>{part.name[lang]}</strong>
+                        <small>{part.english}</small>
+                      </span>
+                      {isLearned && <span className="learned-badge">✓</span>}
+                    </button>
+                  );
+                })}
+                {filteredParts.length === 0 && <p className="empty-state">{t.emptyText}</p>}
+              </div>
+            </aside>
 
-        <aside className={`right-panel ${isSheetExpanded ? 'expanded' : ''}`}>
-          <div className="sheet-drag-handle" onClick={() => setIsSheetExpanded(!isSheetExpanded)}>
-            <div className="handle-bar" />
-          </div>
-          <PartCard 
-            part={activePart} 
-            exploredList={exploredList}
-            onToggleLearned={handleToggleLearned}
-            lang={lang}
-            onClose={() => {
-              setNotice(lang === 'id' ? 'Panel detail tetap tersedia. Pilih anotasi lain.' : 'Details remain available. Select another structure.');
-              setIsSheetExpanded(false);
-            }} 
-          />
-          
-          <section className="teacher-panel glass-panel">
-            <div className="section-title"><Microscope size={16} /> {t.learningRouteTitle}</div>
-            {lang === 'id' ? (
-              <ol>
-                <li>Mulai dari trakea untuk memahami jalur udara utama.</li>
-                <li>Lanjut ke bronkus utama, lobaris, dan segmentalis.</li>
-                <li>Masuk ke bronkiolus, otot polos, lalu alveoli.</li>
-                <li>Akhiri dengan lobus, fisura, dan diafragma.</li>
-              </ol>
-            ) : (
-              <ol>
-                <li>Start at the trachea to understand the primary air pathway.</li>
-                <li>Proceed to the main, lobar, and segmental bronchi.</li>
-                <li>Explore bronchioles, smooth muscles, and the alveoli.</li>
-                <li>Conclude with lobes, fissures, and the diaphragm muscle.</li>
-              </ol>
-            )}
-          </section>
-        </aside>
-      </main>
+            <section className="viewer-panel">
+              <div className="top-toolbar glass-panel">
+                <div>
+                  <p className="eyebrow">{t.toolbarSubtitle}</p>
+                  <strong>{t.toolbarTitle}</strong>
+                </div>
+                <div className="toolbar-actions">
+
+                  {/* Dynamic Header Quick Language Switcher */}
+                  <div className="language-selector-pill">
+                    <button className={`lang-pill-btn ${lang === 'id' ? 'active' : ''}`} onClick={() => handleChangeLanguage('id')}>ID</button>
+                    <button className={`lang-pill-btn ${lang === 'en' ? 'active' : ''}`} onClick={() => handleChangeLanguage('en')}>EN</button>
+                  </div>
+
+                  {/* Dynamic Voice Guide ON/OFF Toggle switch */}
+                  <button 
+                    className={`soft-button voice-toggle-btn ${isVoiceEnabled ? 'active' : ''}`} 
+                    onClick={() => {
+                      setIsVoiceEnabled(!isVoiceEnabled);
+                      if (isVoiceEnabled) {
+                        window.speechSynthesis.cancel();
+                      } else {
+                        speakTerm(lang === 'id' ? 'Asisten suara aktif' : 'Voice assistant active', lang);
+                      }
+                      playChime('click');
+                    }}
+                    title={lang === 'id' ? 'Aktifkan/Nonaktifkan Suara Asisten' : 'Toggle Voice Assistant'}
+                  >
+                    <Volume2 size={14} style={{ marginRight: '6px', display: 'inline-block', verticalAlign: 'middle' }} />
+                    <span>{isVoiceEnabled ? (lang === 'id' ? 'Suara: ON' : 'Voice: ON') : (lang === 'id' ? 'Suara: OFF' : 'Voice: OFF')}</span>
+                  </button>
+
+                  <button className="soft-button" onClick={() => setShowLabels((value) => !value)}>
+                    {showLabels ? t.toolbarHidePin : t.toolbarShowPin}
+                  </button>
+                  <span className="hint"><Rotate3D size={16} /> {t.toolbarHint}</span>
+                </div>
+              </div>
+
+              {/* Dynamic 3D Laboratory Scene */}
+              <LungScene
+                parts={filteredParts}
+                activeId={activeId}
+                activePart={activePart}
+                onSelect={selectPart}
+                showLabels={showLabels}
+                setNotice={setNotice}
+                breathingRate={breathingRate}
+                lang={lang}
+              />
+              
+              {/* Breathing Simulation Controller Panel */}
+              <div className="breathing-rate-controller glass-panel">
+                <span className="controller-title">{t.simulatorTitle}</span>
+                <div className="rate-selector-grid">
+                  <button className={breathingRate === 0 ? 'rate-btn active hold' : 'rate-btn'} onClick={() => setBreathingRate(0)}>{t.simulatorHold}</button>
+                  <button className={breathingRate === 1 ? 'rate-btn active normal' : 'rate-btn'} onClick={() => setBreathingRate(1)}>{t.simulatorNormal}</button>
+                  <button className={breathingRate === 2 ? 'rate-btn active rapid' : 'rate-btn'} onClick={() => setBreathingRate(2)}>{t.simulatorRapid}</button>
+                </div>
+              </div>
+
+              <div className="notice glass-panel">{notice}</div>
+            </section>
+
+            {/* Floating sheet handler for mobile sheet */}
+            {isSheetExpanded && <div className="sheet-backdrop" onClick={() => setIsSheetExpanded(false)} />}
+
+            <aside className={`right-panel ${isSheetExpanded ? 'expanded' : ''}`}>
+              <div className="sheet-drag-handle" onClick={() => setIsSheetExpanded(!isSheetExpanded)}>
+                <div className="handle-bar" />
+              </div>
+              <PartCard 
+                part={activePart} 
+                exploredList={exploredList}
+                onToggleLearned={handleToggleLearned}
+                lang={lang}
+                onClose={() => {
+                  setNotice(lang === 'id' ? 'Panel detail tetap tersedia. Pilih anotasi lain.' : 'Details remain available. Select another structure.');
+                  setIsSheetExpanded(false);
+                }} 
+              />
+              
+              <section className="teacher-panel glass-panel">
+                <div className="section-title"><Microscope size={16} /> {t.learningRouteTitle}</div>
+                {lang === 'id' ? (
+                  <ol>
+                    <li>Mulai dari trakea untuk memahami jalur udara utama.</li>
+                    <li>Lanjut ke bronkus utama, lobaris, dan segmentalis.</li>
+                    <li>Masuk ke bronkiolus, otot polos, lalu alveoli.</li>
+                    <li>Akhiri dengan lobus, fisura, dan diafragma.</li>
+                  </ol>
+                ) : (
+                  <ol>
+                    <li>Start at the trachea to understand the primary air pathway.</li>
+                    <li>Proceed to the main, lobar, and segmental bronchi.</li>
+                    <li>Explore bronchioles, smooth muscles, and the alveoli.</li>
+                    <li>Conclude with lobes, fissures, and the diaphragm muscle.</li>
+                  </ol>
+                )}
+              </section>
+            </aside>
+          </main>
+        </>
+      )}
+
     </div>
   );
 }
