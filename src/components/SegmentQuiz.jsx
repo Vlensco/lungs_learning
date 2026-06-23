@@ -27,8 +27,8 @@ export default function SegmentQuiz({
     // Shuffle pool
     const shuffledPool = [...pool].sort(() => Math.random() - 0.5);
     
-    // Select exactly 5 questions
-    const selected = shuffledPool.slice(0, 5);
+    // Select all questions in the pool to test the entire segment curriculum
+    const selected = shuffledPool;
 
     // Format options and correct answers for active language
     const formatted = selected.map(q => {
@@ -79,7 +79,7 @@ export default function SegmentQuiz({
 
   const handleSubmitResults = () => {
     playChime('complete');
-    onComplete(score);
+    onComplete(score, questions.length);
   };
 
   // Localized texts

@@ -19,28 +19,80 @@ export default function HomePage({
     studentActive: lang === 'id' ? 'Mahasiswa Aktif' : 'Active Student',
     
     // Intro
-    introTitle: lang === 'id' ? 'Pengantar Modul Respirasi' : 'Introduction to Respiratory Module',
+    introTitle: lang === 'id' ? 'Pengantar & Pembagian Sistem Respirasi' : 'Introduction & Divisions of the Respiratory System',
     introDesc: lang === 'id' 
-      ? 'Modul ini dirancang khusus untuk mahasiswa kedokteran dan profesional medis untuk memahami anatomi sistem respirasi secara mendalam. Pembelajaran dibagi menjadi 5 segmen terstruktur, masing-masing dilengkapi dengan evaluasi sebelum (Pre-test) dan sesudah (Post-test) untuk mengukur pemahaman akademis Anda secara presisi.'
-      : 'This module is specifically designed for medical students and clinical professionals to comprehend the respiratory system. The learning is divided into 5 structured segments, each equipped with evaluations before (Pre-test) and after (Post-test) to measure your academic retention precisely.',
+      ? 'Menurut anatominya, Sistem Respirasi dibagi dalam dua kelompok fungsional utama:'
+      : 'Anatomically, the Respiratory System is divided into two primary functional groups:',
+    superiorTitle: lang === 'id' ? 'Sistem Respirasi Superior' : 'Superior Respiratory System',
+    superiorItems: lang === 'id' ? [
+      'Hidung bagian luar (nasus externus) & rongga hidung (cavitas nasi)',
+      'Sinus paranasalis',
+      'Pharynx: Hanya pars nasalis pharyngis (bagian paling superior) yang sekedar menjadi jalan napas. Di pars oralis pharyngis (bagian tengah), terjadi persilangan antara jalan pernapasan dan jalan makanan.'
+    ] : [
+      'External nose (nasus externus) & nasal cavity (cavitas nasi)',
+      'Paranasal sinuses',
+      'Pharynx: Only the pars nasalis pharyngis (most superior part) serves purely as an airway. In the pars oralis pharyngis (middle part), there is a crossover between the respiratory and digestive pathways.'
+    ],
+    inferiorTitle: lang === 'id' ? 'Sistem Respirasi Inferior' : 'Inferior Respiratory System',
+    inferiorItems: lang === 'id' ? [
+      'Larynx: Berperan untuk pembentukan suara dan penutupan sementara jalan pernapasan ketika menelan.',
+      'Trachea',
+      'Dua bronchus utama (Bronchi principales): Lanjutan Trachea yang kemudian bercabang-cabang beberapa kali.',
+      'Alveoli: Berada di ujung percabangan ini; di sini, terjadi pertukaran gas.'
+    ] : [
+      'Larynx: Functions in voice production and temporary closure of the airway when swallowing.',
+      'Trachea',
+      'Two main bronchi (Bronchi principales): Continuation of the Trachea which then branches multiple times.',
+      'Alveoli: Located at the end of the branching tree; the site of gas exchange.'
+    ],
     
     // Objectives
-    objTitle: lang === 'id' ? 'Tujuan Pembelajaran Klinis' : 'Clinical Learning Objectives',
+    objTitle: lang === 'id' ? 'Capaian Pembelajaran' : 'Learning Objectives',
     objectives: lang === 'id' ? [
-      'Memahami anatomi makroskopis & mikroskopis dari saluran napas konduksi hingga alveolus.',
-      'Mengidentifikasi pembagian lobus dan fisura paru kanan dan kiri secara tiga dimensi.',
-      'Menganalisis hubungan antara bronkiolus, otot polos, dan patofisiologi konstriksi jalan napas.',
-      'Mengkorelasikan fungsi piston diafragma terhadap fluktuasi tekanan udara rongga dada.',
+      'Mengidentifikasi struktur anatomi makroskopis sistem respirasi pada model 3D',
+      'Memvisualisasikan hubungan spasial tiga dimensi',
+      'Menelusuri percabangan arbor bronchialis secara berurutan pada model 3D',
+      'Membedakan karakteristik anatomi bronchus dextra dan sinistra',
+      'Mengidentifikasi lobus pulmonalis, fissura pulmonis, facies pulmonis, margo pulmonis, hilum pulmonis, dan radix pulmonis pada media 3D.',
+      'Menentukan lokasi dan batas segmen bronkopulmonal',
+      'Mengidentifikasi komponen pleura dan cavitas pleuralis'
     ] : [
-      'Comprehend the macroscopic & microscopic anatomy from conducting airways to the alveoli.',
-      'Identify the three-dimensional division of lobes and fissures in both right and left lungs.',
-      'Analyze the relationship between bronchioles, smooth muscle, and the pathophysiology of airway constriction.',
-      'Correlate the piston-like function of the diaphragm with pressure changes in the thoracic cavity.',
+      'Identify the macroscopic anatomical structures of the respiratory system on a 3D model',
+      'Visualize three-dimensional spatial relationships',
+      'Trace the branching of the bronchial tree (arbor bronchialis) sequentially on a 3D model',
+      'Differentiate between the anatomical characteristics of the right and left bronchi',
+      'Identify the lung lobes, fissures, surfaces, margins, hilum, and root (radix pulmonis) on a 3D medium',
+      'Determine the location and boundaries of bronchopulmonary segments',
+      'Identify the components of the pleura and pleural cavity'
     ],
 
     // Terminology
-    termTitle: lang === 'id' ? 'Terminologi Penting (Glossary)' : 'Key Clinical Terminology',
+    termTitle: lang === 'id' ? 'Terminologi Dasar & Penting' : 'Basic & Key Terminology',
     terms: [
+      {
+        name: 'Pulmo (Pulmones)',
+        desc: lang === 'id'
+          ? 'Paru-paru: Organ utama respirasi tempat pertukaran gas O2 dan CO2 terjadi.'
+          : 'Lungs: The primary organs of respiration where O2 and CO2 gas exchange occurs.'
+      },
+      {
+        name: 'Cavitas Thoracis',
+        desc: lang === 'id'
+          ? 'Rongga dada: Rongga tubuh yang dilindungi oleh sangkar tulang rusuk, berisi paru-paru dan jantung.'
+          : 'Thoracic cavity: The body cavity protected by the ribs, containing the lungs and heart.'
+      },
+      {
+        name: 'Cavitas Pleuralis',
+        desc: lang === 'id'
+          ? 'Rongga pleura: Rongga potensial kedap udara di antara pleura visceralis dan parietalis.'
+          : 'Pleural cavity: The potential airtight space between the visceral and parietal pleura.'
+      },
+      {
+        name: 'Cor',
+        desc: lang === 'id'
+          ? 'Jantung: Organ muscular berongga yang memompa darah ke seluruh tubuh, terletak di mediastinum.'
+          : 'Heart: The hollow muscular organ that pumps blood throughout the body, situated in the mediastinum.'
+      },
       {
         name: 'Bifurcatio Tracheae',
         desc: lang === 'id' 
@@ -114,39 +166,32 @@ export default function HomePage({
   // Define segments static details
   const segments = [
     {
-      id: 'Saluran Napas',
-      title: lang === 'id' ? 'Saluran Napas Utama (Airways)' : 'Main Airways & Bronchi',
+      id: 'Trachea',
+      title: lang === 'id' ? 'Trachea (Trakea)' : 'Trachea',
       parts: lang === 'id' 
-        ? 'Trakea, Kartilago Trakea, Karina, Bronkus Utama Kanan/Kiri, Bronkus Lobaris, Bronkus Segmentalis'
-        : 'Trachea, Tracheal Cartilages, Carina, Right/Left Main Bronchi, Lobar Bronchi, Segmental Bronchi'
+        ? 'Trakea Cervical & Thoracic, Cartilagines Tracheales, Ligamenta Annularia, Bifurcatio Trachea'
+        : 'Cervical & Thoracic Trachea, Tracheal Cartilages, Annular Ligaments, Tracheal Bifurcation'
     },
     {
-      id: 'Lobus Paru',
-      title: lang === 'id' ? 'Lobus Paru (Lung Lobes)' : 'Lung Lobes & Facies',
-      parts: lang === 'id'
-        ? 'Lobus Superior Kanan, Lobus Medius Kanan, Lobus Inferior Kanan, Lobus Superior Kiri, Lobus Inferior Kiri'
-        : 'Right Superior, Middle, and Inferior Lobes; Left Superior and Inferior Lobes'
+      id: 'Arbor Bronchialis',
+      title: lang === 'id' ? 'Arbor Bronchialis (Cabang Bronkus)' : 'Bronchial Tree',
+      parts: lang === 'id' 
+        ? 'Bronchus Principalis, Bronchus Lobaris (Superior/Medius/Inferior), Bronkiolus, Alveoli'
+        : 'Main Bronchus, Lobar Bronchi (Superior/Middle/Inferior), Bronchioles, Alveolar Sacs'
     },
     {
-      id: 'Fisura',
-      title: lang === 'id' ? 'Fisura Paru (Fissures)' : 'Anatomical Fissures',
+      id: 'Pleura & Cavitas Pleuralis',
+      title: lang === 'id' ? 'Pleura & Cavitas Pleuralis' : 'Pleura & Pleural Cavity',
       parts: lang === 'id'
-        ? 'Fisura Horizontal Kanan, Fisura Oblique Kanan, Fisura Oblique Kiri'
-        : 'Right Horizontal Fissure, Right Oblique Fissure, Left Oblique Fissure'
+        ? 'Pleura Parietalis, Pleura Visceralis, Cavitas Pleuralis'
+        : 'Parietal Pleura, Visceral Pleura, Pleural Cavity'
     },
     {
-      id: 'Mikro',
-      title: lang === 'id' ? 'Mikroskopis Paru (Microscopic)' : 'Microscopic Structures',
+      id: 'Pulmo',
+      title: lang === 'id' ? 'Pulmo (Paru-Paru)' : 'Lungs (Pulmo)',
       parts: lang === 'id'
-        ? 'Bronkiolus Terminalis/Respiratorius, Otot Polos Bronkiolus, Sakus Alveolar'
-        : 'Terminal/Respiratory Bronchioles, Bronchial Smooth Muscles, Alveoli'
-    },
-    {
-      id: 'Mekanisme Bernapas',
-      title: lang === 'id' ? 'Mekanisme Bernapas (Mechanics)' : 'Respiratory Mechanics',
-      parts: lang === 'id'
-        ? 'Diafragma Utama, Pleura Parietalis/Visceralis, Cavitas Pleuralis'
-        : 'Primary Diaphragm, Parietal/Visceral Pleura, Pleural Cavity'
+        ? 'Apex, Basis, Radix, Hilum, Ligamentum Pulmonale, Lobus & Fissura (Dextra/Sinistra), Margines'
+        : 'Apex, Base, Root, Hilum, Pulmonary Ligament, Lobes & Fissures (Right/Left), Borders'
     }
   ];
 
@@ -191,9 +236,38 @@ export default function HomePage({
         {/* Intro & Objectives */}
         <section className="intro-objectives-card glass-panel">
           <article className="intro-part">
-            <h2>{text.introTitle}</h2>
-            <p>{text.introDesc}</p>
+            <div>
+              <h2>{text.introTitle}</h2>
+              <p style={{ margin: 0 }}>{text.introDesc}</p>
+            </div>
+            
+            <div className="divisions-grid">
+              {/* Superior Respiratory System Column */}
+              <div className="division-col superior">
+                <strong>
+                  {text.superiorTitle}
+                </strong>
+                <ul>
+                  {text.superiorItems.map((item, idx) => (
+                    <li key={idx}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+              
+              {/* Inferior Respiratory System Column */}
+              <div className="division-col inferior">
+                <strong>
+                  {text.inferiorTitle}
+                </strong>
+                <ul>
+                  {text.inferiorItems.map((item, idx) => (
+                    <li key={idx}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </article>
+          
           <article className="objectives-part">
             <h3>{text.objTitle}</h3>
             <div className="objectives-list">
@@ -253,11 +327,11 @@ export default function HomePage({
                   <div className="segment-status-row">
                     <div className="segment-score-badge">
                       <span>{text.pretestScore}</span>
-                      <span>{prog.pretest !== null ? `${prog.pretest}/5` : '-'}</span>
+                      <span>{prog.pretest !== null ? `${prog.pretest}/${seg.id === 'Pleura & Cavitas Pleuralis' ? 5 : 10}` : '-'}</span>
                     </div>
                     <div className="segment-score-badge">
                       <span>{text.posttestScore}</span>
-                      <span>{prog.posttest !== null ? `${prog.posttest}/5` : '-'}</span>
+                      <span>{prog.posttest !== null ? `${prog.posttest}/${seg.id === 'Pleura & Cavitas Pleuralis' ? 5 : 10}` : '-'}</span>
                     </div>
                   </div>
 

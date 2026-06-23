@@ -128,7 +128,10 @@ export function speakTerm(text, lang = 'id') {
       };
       
       utterance.onerror = (e) => {
-        console.error('SpeechSynthesisUtterance error:', e);
+        // Suppress standard SpeechSynthesis interruption logs in the console
+        if (e.error !== 'interrupted') {
+          console.warn('SpeechSynthesisUtterance status:', e.error || e);
+        }
         window.activeUtterance = null;
         window.speechSynthesis.resume();
       };

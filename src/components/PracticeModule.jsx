@@ -3,7 +3,7 @@ import { Microscope, Award, ArrowRight, RefreshCw, X, CheckCircle, AlertTriangle
 import { partData, layerOptions } from '../data/partData';
 import { playChime } from '../utils/audioSpeech';
 import { supabase } from '../utils/supabaseClient';
-import { set1Airways, set2PulmoPleura } from '../data/quizQuestions';
+import { tracheaQuestions, arborQuestions, pleuraQuestions, pulmoQuestions } from '../data/quizQuestions';
 
 export default function PracticeModule({ username, lang, onClose }) {
   const [activeCategory, setActiveCategory] = useState('Semua');
@@ -19,7 +19,7 @@ export default function PracticeModule({ username, lang, onClose }) {
 
   // Exclude layer options like 'Semua' or 'Mekanisme Bernapas' to map clean category queries
   const categories = useMemo(() => {
-    return ['Semua', 'Saluran Napas', 'Lobus Paru', 'Fisura', 'Mikro', 'Mekanisme Bernapas'];
+    return ['Semua', 'Trachea', 'Arbor Bronchialis', 'Pleura & Cavitas Pleuralis', 'Pulmo'];
   }, []);
 
   // Compile interactive anatomical questions from the official DOCX question sets with full ID/EN translations!
@@ -28,97 +28,35 @@ export default function PracticeModule({ username, lang, onClose }) {
 
     let selectedQuestions = [];
 
-    if (category === 'Saluran Napas' || category === 'Mikro') {
-      // Use Set 1: airways & bronchioles questions (exactly 10 questions)
-      selectedQuestions = shuffleArray(set1Airways).slice(0, 10);
-    } else if (category === 'Lobus Paru' || category === 'Fisura' || category === 'Mekanisme Bernapas') {
-      // Use Set 2: pulmo, hilum, & pleura questions (exactly 10 questions from the 12 available)
-      selectedQuestions = shuffleArray(set2PulmoPleura).slice(0, 10);
+    if (category === 'Trachea') {
+      selectedQuestions = shuffleArray(tracheaQuestions).slice(0, 5);
+    } else if (category === 'Arbor Bronchialis') {
+      selectedQuestions = shuffleArray(arborQuestions).slice(0, 5);
+    } else if (category === 'Pleura & Cavitas Pleuralis') {
+      selectedQuestions = shuffleArray(pleuraQuestions).slice(0, 5);
+    } else if (category === 'Pulmo') {
+      selectedQuestions = shuffleArray(pulmoQuestions).slice(0, 5);
     } else {
-      // 'Semua' (All Segments) -> Target exactly 30 questions
-      // Combine both official sets (22 questions)
-      const officialPool = shuffleArray([...set1Airways, ...set2PulmoPleura]);
-      
-      // To reach exactly 30, we generate 8 dynamic questions from partData!
-      const dynamicCount = 30 - officialPool.length; // 30 - 22 = 8
-      const dynamicPool = [];
-      const shuffledParts = shuffleArray(partData);
-
-      for (let i = 0; i < dynamicCount; i++) {
-        const targetPart = shuffledParts[i % shuffledParts.length];
-        const qType = Math.floor(Math.random() * 3); // 0, 1, 2
-
-        let questionText = '';
-        let correctAnswer = '';
-        let distractors = [];
-
-        if (qType === 0) {
-          questionText = lang === 'id' 
-            ? `Manakah di bawah ini yang merupakan FUNGSI utama dari "${targetPart.name[lang]}"?`
-            : `Which of the following is the primary FUNCTION of the "${targetPart.name[lang]}"?`;
-          correctAnswer = targetPart.function[lang];
-          distractors = partData
-            .filter(p => p.id !== targetPart.id && p.function && p.function[lang] !== correctAnswer)
-            .map(p => p.function[lang]);
-        } else if (qType === 1) {
-          questionText = lang === 'id'
-            ? `Landmark anatomi manakah yang memiliki analogi medis: "${targetPart.analogy[lang]}"?`
-            : `Which anatomical landmark has the following clinical analogy: "${targetPart.analogy[lang]}"?`;
-          correctAnswer = targetPart.name[lang];
-          distractors = partData
-            .filter(p => p.id !== targetPart.id && p.name && p.name[lang] !== correctAnswer)
-            .map(p => p.name[lang]);
-        } else {
-          questionText = lang === 'id'
-            ? `Apa istilah medis/bahasa Inggris resmi untuk organ "${targetPart.name.id}"?`
-            : `What is the official English/Latin translation for the structure "${targetPart.name.id}"?`;
-          correctAnswer = targetPart.english;
-          distractors = partData
-            .filter(p => p.id !== targetPart.id && p.english !== correctAnswer)
-            .map(p => p.english);
-        }
-
-        const uniqueDistractors = shuffleArray(Array.from(new Set(distractors.filter(Boolean)))).slice(0, 3);
-        const options = shuffleArray([...uniqueDistractors, correctAnswer]);
-
-        dynamicPool.push({
-          id: `dynamic_${i}_${targetPart.id}`,
-          questionText,
-          options,
-          correctAnswer
-        });
-      }
-
-      // Combine official questions with our dynamic filler questions
-      selectedQuestions = [...officialPool, ...dynamicPool];
+      // 'Semua' (All Segments) -> Target exactly 10 questions from the 35 official questions
+      const officialPool = [...tracheaQuestions, ...arborQuestions, ...pleuraQuestions, ...pulmoQuestions];
+      selectedQuestions = shuffleArray(officialPool).slice(0, 10);
     }
 
     // Ensure all options are shuffled and structured correctly based on active language
     return selectedQuestions.map(q => {
-      let qText = '';
-      let opts = [];
-      let correctAns = '';
-
-      if (q.id && q.id.startsWith("dynamic_")) {
-        qText = q.questionText;
-        opts = shuffleArray(q.options);
-        correctAns = q.correctAnswer;
-      } else {
-        qText = q.questionText[lang] || q.questionText.id;
-        opts = shuffleArray(q.options.map(opt => opt[lang] || opt.id));
-        correctAns = q.options[q.correctAnswerIndex][lang] || q.options[q.correctAnswerIndex].id;
-      }
+      const qText = q.questionText[lang] || q.questionText.id;
+      const opts = shuffleArray(q.options.map(opt => opt[lang] || opt.id));
+      const correctAns = q.options[q.correctAnswerIndex][lang] || q.options[q.correctAnswerIndex].id;
       
       let partColor = '#0284c7'; // default sky-blue
       let partName = '';
 
-      const textToSearch = typeof q.questionText === 'object' 
-        ? (q.questionText.id + " " + q.questionText.en) 
-        : q.questionText;
+      const textToSearch = (q.questionText.id + " " + q.questionText.en).toLowerCase();
 
       const foundPart = partData.find(p => {
-        return textToSearch.toLowerCase().includes(p.name.id.toLowerCase()) || 
-               textToSearch.toLowerCase().includes(p.name.en.toLowerCase());
+        return textToSearch.includes(p.name.id.toLowerCase()) || 
+               textToSearch.includes(p.name.en.toLowerCase()) ||
+               textToSearch.includes(p.english.toLowerCase());
       });
 
       if (foundPart) {
@@ -292,13 +230,18 @@ export default function PracticeModule({ username, lang, onClose }) {
               <div className="quiz-category-grid">
                 {categories.map((catName) => {
                   let translatedCat = catName;
-                  if (lang === 'en') {
-                    if (catName === 'Semua') translatedCat = 'All Layers';
-                    else if (catName === 'Saluran Napas') translatedCat = 'Airways';
-                    else if (catName === 'Lobus Paru') translatedCat = 'Lung Lobes';
-                    else if (catName === 'Fisura') translatedCat = 'Fissures';
-                    else if (catName === 'Mikro') translatedCat = 'Micro';
-                    else if (catName === 'Mekanisme Bernapas') translatedCat = 'Mechanics';
+                  if (lang === 'id') {
+                    if (catName === 'Semua') translatedCat = 'Semua Segmen';
+                    else if (catName === 'Trachea') translatedCat = 'Trachea (Trakea)';
+                    else if (catName === 'Arbor Bronchialis') translatedCat = 'Arbor Bronchialis';
+                    else if (catName === 'Pleura & Cavitas Pleuralis') translatedCat = 'Pleura & Cavitas Pleuralis';
+                    else if (catName === 'Pulmo') translatedCat = 'Pulmo (Paru-Paru)';
+                  } else if (lang === 'en') {
+                    if (catName === 'Semua') translatedCat = 'All Segments';
+                    else if (catName === 'Trachea') translatedCat = 'Trachea';
+                    else if (catName === 'Arbor Bronchialis') translatedCat = 'Bronchial Tree';
+                    else if (catName === 'Pleura & Cavitas Pleuralis') translatedCat = 'Pleura & Pleural Cavity';
+                    else if (catName === 'Pulmo') translatedCat = 'Lungs';
                   }
                   return (
                     <button

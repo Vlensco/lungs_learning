@@ -1,168 +1,180 @@
 import React from 'react';
-import { BookOpen, AlertTriangle, ArrowRight, ShieldAlert, X } from 'lucide-react';
+import { BookOpen, AlertTriangle, ArrowRight, ShieldAlert, X, Rotate3D } from 'lucide-react';
 
 export default function SegmentMaterial({ segmentId, lang, onNext, onClose }) {
   
   // Localized materials database
   const materials = {
-    'Saluran Napas': {
-      title: lang === 'id' ? 'Saluran Napas Utama (Airways)' : 'Main Airways & Conducting Zone',
-      subtitle: lang === 'id' ? 'Anatomi Makroskopis Zona Konduksi' : 'Macroscopic Anatomy of the Conducting Zone',
+    'Trachea': {
+      title: lang === 'id' ? 'Trachea (Trakea)' : 'Trachea',
+      subtitle: lang === 'id' ? 'Anatomi & Struktur Trakea' : 'Anatomy & Structure of the Trachea',
       intro: lang === 'id'
-        ? 'Saluran napas konduksi bertugas untuk menyalurkan, menyaring, menghangatkan, dan melembapkan udara sebelum mencapai zona respirasi di alveolus. Dinding saluran napas dilapisi oleh epitel kolumnar berlapis semu bersilia (epitel respiratorius) dengan sel Goblet yang memproduksi mukus untuk menangkap partikel asing.'
-        : 'The conducting zone channels, filters, warms, and humidifies air before it reaches the respiratory zone in the alveoli. The airway walls are lined by ciliated pseudostratified columnar epithelium (respiratory epithelium) containing mucus-secreting Goblet cells to trap foreign particles.',
-      clinicalTitle: lang === 'id' ? 'KORELASI KLINIS: ASPIRASI BENDA ASING' : 'CLINICAL CORRELATION: FOREIGN BODY ASPIRATION',
+        ? 'Trakea merupakan saluran udara utama sepanjang ±10–12 cm yang membentang dari batas inferior kartilago cricoidea (C6) hingga bifurcatio tracheae (T4/T5). Trakea terletak di linea mediana, anterior terhadap oesophagus, dan terbagi menjadi pars cervicalis (leher) serta pars thoracica (dada). Dindingnya dilapisi oleh epitel respiratorius bersilia yang berfungsi membersihkan debu.'
+        : 'The trachea is the main airway, measuring ±10–12 cm in length, extending from the inferior border of the cricoid cartilage (C6) to the tracheal bifurcation (T4/T5). Located along the midline anterior to the esophagus, it is divided into cervical (pars cervicalis) and thoracic (pars thoracica) parts, lined by ciliated respiratory epithelium.',
+      clinicalTitle: lang === 'id' ? 'KORELASI KLINIS: CARINA & REFLEKS BATUK' : 'CLINICAL CORRELATION: CARINA & COUGH REFLEX',
       clinicalDesc: lang === 'id'
-        ? 'Secara klinis, jika pasien tidak sengaja menghirup benda asing (aspirasi), benda tersebut paling sering tersangkut di Bronkus Utama Kanan. Hal ini disebabkan karena bronkus utama kanan memiliki diameter lebih lebar, lebih pendek, dan jalurnya lebih vertikal/lurus dibandingkan bronkus utama kiri yang lebih mendatar/horizontal karena posisi jantung.'
-        : 'Clinically, if a patient accidentally inhales a foreign object, it is much more likely to lodge in the Right Main Bronchus. This is because the right main bronchus is wider, shorter, and runs more vertically than the left main bronchus, which is pushed more horizontally by the heart.',
+        ? 'Pada percabangan trakea (bifurcatio tracheae) terdapat carina tracheae, yaitu tonjolan kartilaginosa intraluminal. Mukosa carina sangat sensitif karena kaya akan reseptor saraf sensorik (nervus vagus). Jika partikel makanan atau benda asing menyentuhnya, refleks batuk hebat akan dipicu sebagai pertahanan tubuh untuk melestarikan jalan napas.'
+        : 'At the tracheal bifurcation lies the carina, an internal cartilaginous ridge. The mucosa of the carina is highly sensitive due to rich sensory innervation (vagus nerve). If foreign particles or food touch the carina, it triggers a violent cough reflex to protect the airway and clear the obstruction.',
+      sketchfabLinks: [
+        {
+          url: 'https://skfb.ly/opJAx',
+          label: { id: 'Model 3D Trachea (Sketchfab)', en: 'Trachea 3D Model (Sketchfab)' }
+        }
+      ],
       organs: [
         {
-          name: 'Trakea (Trachea)',
+          name: lang === 'id' ? 'Pars Cervicalis & Thoracica' : 'Cervical & Thoracic Parts',
           desc: lang === 'id'
-            ? 'Pipa utama sepanjang 10-12 cm yang dilapisi oleh 16-20 cincin kartilago hialin berbentuk huruf C (incomplete). Bagian belakangnya ditutup oleh otot trakealis (otot polos) untuk memfasilitasi jalannya makanan di esofagus yang berada di posteriornya.'
-            : 'A 10-12 cm primary tube supported by 16-20 C-shaped (incomplete) hyaline cartilage rings. The posterior aspect is closed by the trachealis muscle (smooth muscle) to accommodate the bolus expansion in the posterior esophagus during swallowing.'
+            ? 'Pars cervicalis terletak di regio leher sedangkan pars thoracica masuk ke rongga mediastinum dada. Keduanya menyalurkan udara secara langsung menuju paru.'
+            : 'The cervical part lies in the neck region, while the thoracic part extends into the chest mediastinum. Both act as a direct channel to direct air into the lungs.'
         },
         {
-          name: 'Karina (Carina)',
+          name: 'Cartilagines Tracheales',
           desc: lang === 'id'
-            ? 'Batas kartilago berbentuk kait di ujung bifurkasi trakea (setinggi vertebra T4-T5). Mukosa karina memiliki sensitivitas saraf sensorik tertinggi (dari nervus vagus) sehingga jika ada benda asing menyentuhnya, refleks batuk hebat akan terpicu.'
-            : 'A hook-like ridge at the bifurcation of the trachea (level with T4-T5). The carina mucosa is rich in sensory receptors (innervated by the vagus nerve), making it the most sensitive site for triggering the protective cough reflex.'
+            ? 'Dinding trakea diperkuat oleh 16–20 tulang rawan hialin berbentuk huruf C/U. Bagian posterior cincin ini terbuka dan ditutup oleh otot trakealis (otot polos) untuk memberi kelenturan saat esofagus mengembang menelan makanan.'
+            : 'Reinforced by 16–20 C-shaped or U-shaped hyaline cartilage rings. The posterior open gap is closed by the trachealis smooth muscle, allowing esophageal expansion during swallowing.'
         },
         {
-          name: 'Bronkus Utama (Main Bronchi)',
+          name: 'Ligamenta Annularia',
           desc: lang === 'id'
-            ? 'Percabangan pertama trakea. Bronkus utama kanan mengalirkan udara ke paru kanan (3 lobus), sedangkan bronkus utama kiri mengalirkan udara ke paru kiri (2 lobus).'
-            : 'The primary tracheal bifurcation. The right main bronchus leads to the right lung (3 lobes), whereas the left main bronchus conducts air to the left lung (2 lobes).'
+            ? 'Struktur ligamen elastis yang menghubungkan cincin kartilago trakea satu dengan lainnya, menjaga fleksibilitas dan memungkinkan trakea memanjang-memendek selama respirasi.'
+            : 'Elastic ligamentous structures connecting adjacent tracheal cartilages, providing flexibility and allowing the trachea to stretch and contract during respiration.'
         },
         {
-          name: 'Bronkus Lobaris & Segmentalis (Lobar & Segmental Bronchi)',
+          name: 'Bifurcatio Trachea',
           desc: lang === 'id'
-            ? 'Bronkus lobaris (sekunder) menyuplai setiap lobus paru. Bronkus segmentalis (tersier) menyuplai segmen bronkopulmonal (unit fungsional terkecil paru yang memiliki pembungkus jaringan ikat sendiri, sehingga dapat dipotong secara bedah secara mandiri).'
-            : 'Lobar (secondary) bronchi supply each lung lobe. Segmental (tertiary) bronchi supply bronchopulmonary segments, which are the smallest independent functional lung units wrapped in connective tissue, allowing single surgical resection.'
+            ? 'Titik percabangan trakea setinggi angulus sterni (T4-T5) yang memisahkan bronkus utama kanan dan kiri. Di dalam bifurkasi terdapat tonjolan carina tracheae.'
+            : 'The branching point of the trachea at the sternal angle level (T4-T5), dividing into the right and left main bronchi. It contains the carina ridge internally.'
         }
       ]
     },
-    'Lobus Paru': {
-      title: lang === 'id' ? 'Lobus Paru (Lung Lobes)' : 'Lung Lobes & Facies',
-      subtitle: lang === 'id' ? 'Struktur Makroskopis dan Permukaan Paru' : 'Macroscopic Structure and Lung Surfaces',
+    'Arbor Bronchialis': {
+      title: lang === 'id' ? 'Arbor Bronchialis (Cabang Bronkus)' : 'Bronchial Tree (Arbor Bronchialis)',
+      subtitle: lang === 'id' ? 'Sistem Percanangan Saluran Napas Intrapulmonal' : 'Intrapulmonary Airway Branching System',
       intro: lang === 'id'
-        ? 'Paru-paru memiliki bentuk kerucut dengan bagian puncak (apex) yang menonjol di atas kosta pertama dan bagian dasar (basis) yang menempel pada diafragma. Paru kanan dan kiri memiliki perbedaan anatomi yang signifikan untuk mengakomodasi ruang organ jantung di rongga mediastinum dada kiri.'
-        : 'The lungs are cone-shaped with an apex projecting above the first rib and a base resting on the diaphragm. The right and left lungs have major anatomical differences to accommodate the heart within the left chest mediastinum cavity.',
-      clinicalTitle: lang === 'id' ? 'KORELASI KLINIS: LOBEKTOMI & RADIX PULMONIS' : 'CLINICAL CORRELATION: LOBECTOMY & RADIX PULMONIS',
+        ? 'Arbor bronchialis adalah percabangan berulang saluran udara dari bronkus utama hingga alveoli. Saluran ini bertambah sempit namun luas permukaannya meningkat drastis. Zona konduksi (bronkus utama, lobaris, segmentalis, dan bronkiolus terminalis) bertugas mengalirkan udara, sedangkan zona respirasi (bronkiolus respiratorius dan alveoli) melakukan pertukaran gas.'
+        : 'The bronchial tree is a branching network from the main bronchi down to the alveoli. The airway diameter narrows but the total surface area increases. The conducting zone channels air, while the respiratory zone (respiratory bronchioles, alveolar sacs) is the site of gas exchange.',
+      clinicalTitle: lang === 'id' ? 'KORELASI KLINIS: ASPIRASI BENDA ASING & ASMA' : 'CLINICAL CORRELATION: FOREIGN BODY ASPIRATION & ASTHMA',
       clinicalDesc: lang === 'id'
-        ? 'Pada kasus tumor paru terlokalisir, ahli bedah melakukan lobektomi (pengangkatan satu lobus). Struktur hilum paru (tempat keluar masuknya bronkus, arteri, dan vena pulmonalis) harus diidentifikasi secara presisi. Di paru kanan, susunan hilum dari superior ke inferior adalah Bronkus-Arteri-Vena (BAV), sedangkan di paru kiri adalah Arteri-Bronkus-Vena (ABV).'
-        : 'In localized lung tumors, surgeons perform a lobectomy (resection of one lobe). The structures of the lung root / hilum (where the bronchi, pulmonary arteries, and veins enter/exit) must be carefully isolated. On the right, the arrangement from superior to inferior is Bronchus-Artery-Vein (BAV), while on the left it is Artery-Bronchus-Vein (ABV).',
+        ? 'Secara anatomi, Bronchus Principalis Dexter (kanan) lebih pendek, lebih lebar, dan lebih vertikal dibanding sinister (kiri). Akibatnya, benda asing yang terhirup paling sering masuk ke paru kanan. Pada asma, otot polos bronkiolus mengalami konstriksi (bronkokonstriksi) akibat hipersensitivitas otonom, mempersempit jalan napas sehingga menyebabkan sesak.'
+        : 'Anatomically, the Right Main Bronchus is wider, shorter, and more vertical than the left. Consequently, aspirated foreign bodies lodge more frequently in the right lung. In asthma, the bronchiolar smooth muscle contracts excessively (bronchoconstriction) under parasympathetic stimulation, narrowing the airways.',
+      sketchfabLinks: [
+        {
+          url: 'https://skfb.ly/opJAx',
+          label: { id: 'Model 3D Arbor Bronchialis (Sketchfab)', en: 'Bronchial Tree 3D Model (Sketchfab)' }
+        }
+      ],
       organs: [
         {
-          name: 'Paru Kanan (Right Lung - 3 Lobes)',
+          name: 'Bronchi Principales',
           desc: lang === 'id'
-            ? 'Memiliki 3 lobus: Superior, Medius, dan Inferior. Paru kanan lebih besar dan berat, namun lebih pendek karena kubah diafragma kanan didorong ke atas oleh organ hati (hepar).'
-            : 'Consists of 3 lobes: Superior, Middle, and Inferior. The right lung is larger and heavier but shorter because the right dome of the diaphragm is pushed upward by the liver.'
+            ? 'Bronkus utama kanan bercabang menjadi 3 lobaris (superior, medius, inferior), sedangkan bronkus utama kiri bercabang menjadi 2 lobaris (superior, inferior).'
+            : 'The primary bronchi. The right main bronchus splits into 3 lobar bronchi (superior, middle, inferior), while the left main bronchus divides into 2 lobar bronchi.'
         },
         {
-          name: 'Paru Kiri (Left Lung - 2 Lobes)',
+          name: 'Bronchi Lobares (Sekunder)',
           desc: lang === 'id'
-            ? 'Memiliki 2 lobus: Superior dan Inferior. Paru kiri memiliki cekungan impressio cardiaca dan cardiac notch pada facies mediastinalis untuk menampung apeks jantung. Memiliki Lingula (bagian bawah lobus superior kiri) yang homolog dengan lobus medius kanan.'
-            : 'Consists of 2 lobes: Superior and Inferior. The left lung features a cardiac impression and notch on its mediastinal surface to house the heart apex. It has the Lingula (lower projection of the left superior lobe), which is the homologue of the right middle lobe.'
+            ? 'Menyuplai masing-masing lobus paru. Di paru kanan terdapat 3 bronkus lobaris, sedangkan di paru kiri terdapat 2 bronkus lobaris.'
+            : 'Secondary bronchi that supply each lobe. There are 3 lobar bronchi in the right lung and 2 lobar bronchi in the left lung.'
         },
         {
-          name: 'Basis & Apex Pulmonis',
+          name: 'Bronchi Segmentales (Tersier)',
           desc: lang === 'id'
-            ? 'Apex menonjol ke atas melewati apertura thoracis superior hingga pangkal leher. Basis berbentuk cekung (facies diaphragmatica) menyesuaikan bentuk kubah diafragma di bawahnya.'
-            : 'The apex projects superiorly through the superior thoracic aperture into the root of the neck. The base is concave (diaphragmatic surface) conforming to the dome of the diaphragm below.'
+            ? 'Bercabang dari bronkus lobaris untuk menyuplai segmen bronkopulmonal. Paru kanan memiliki 10 segmen klasik (S1-S10) dan paru kiri memiliki 8-10 segmen.'
+            : 'Branches of lobar bronchi supplying bronchopulmonary segments. The right lung has 10 classic segments (S1-S10) and the left lung has 8-10 segments.'
+        },
+        {
+          name: 'Bronkiolus & Alveoli',
+          desc: lang === 'id'
+            ? 'Bronkiolus merupakan saluran <1 mm tanpa kartilago yang dilapisi otot polos. Ujungnya bermuara di alveoli, kantung udara berdinding tipis tempat difusi O2 dan CO2 terjadi.'
+            : 'Bronchioles are <1 mm pathways without cartilage wrapped in smooth muscle. They lead to the alveoli, thin-walled air sacs where O2 and CO2 diffuse.'
         }
       ]
     },
-    'Fisura': {
-      title: lang === 'id' ? 'Fisura Paru (Fissures)' : 'Anatomical Fissures',
-      subtitle: lang === 'id' ? 'Garis Batas Anatomi dan Mekanika Paru' : 'Anatomical Boundaries and Lung Expansion Mechanics',
+    'Pleura & Cavitas Pleuralis': {
+      title: lang === 'id' ? 'Pleura & Cavitas Pleuralis' : 'Pleura & Pleural Cavity',
+      subtitle: lang === 'id' ? 'Selaput Pembungkus & Ruang Rongga Dada' : 'Lung Lining & Thoracic Cavity Space',
       intro: lang === 'id'
-        ? 'Fisura adalah lipatan pleura viseral yang membagi paru-paru secara anatomi menjadi lobus-lobus terpisah. Fisura ini memungkinkan lobus-lobus paru untuk meluncur satu sama lain saat proses bernapas (mengembang dan mengempis), sehingga mengurangi gesekan mekanis dan membatasi penyebaran penyakit lokalisir.'
-        : 'Fissures are double folds of visceral pleura that divide the lungs into lobes. These fissures allow the lobes to slide relative to one another during respiration, minimizing mechanical friction and containing localized infections or disease spread.',
-      clinicalTitle: lang === 'id' ? 'KORELASI KLINIS: LANDMARK FISURA & VARIASI FISURA' : 'CLINICAL CORRELATION: FISSURE LANDMARKS & VARIATIONS',
+        ? 'Pleura adalah membran serosa ganda yang melapisi paru-paru dan dinding dada. Di antara kedua lapisan pleura terdapat cavitas pleuralis, sebuah ruang potensial kedap udara yang berisi sedikit cairan serosa pelumas fisiologis. Rongga ini mempertahankan tekanan negatif (-4 mmHg) agar paru tetap mengembang menempel pada dinding dada.'
+        : 'The pleura is a double-layered serous membrane lining the lungs and chest wall. Between them lies the pleural cavity, a potential airtight space containing a small amount of lubricating serous fluid. This cavity maintains a subatmospheric negative pressure (-4 mmHg) to keep the lungs inflated.',
+      clinicalTitle: lang === 'id' ? 'KORELASI KLINIS: PNEUMOTHORAX & TORAKOSENTESIS' : 'CLINICAL CORRELATION: PNEUMOTHORAX & THORACOCENTESIS',
       clinicalDesc: lang === 'id'
-        ? 'Secara klinis di permukaan dinding dada, fisura obliqua diproyeksikan mulai dari prosesus spinosus vertebra T3/T4 secara diagonal ke sela iga ke-6 di anterior. Fisura horizontalis diproyeksikan mengikuti kosta ke-4 kanan. Jika terjadi variasi berupa fisura tidak lengkap (incomplete fissure), hal ini dapat memicu kebocoran udara pasca-operasi bedah lobus.'
-        : 'Clinically on the chest wall, the oblique fissure is projected from the T3/T4 spinous process diagonally to the 6th costal cartilage anteriorly. The horizontal fissure runs along the right 4th rib. Incomplete fissures (an anatomical variation) can lead to postoperative air leaks during lobar resection.',
+        ? 'Jika dinding dada terluka atau pleura robek (misal kecelakaan), udara masuk ke rongga pleura (pneumothorax). Kehilangan tekanan negatif menyebabkan paru kolaps (atelektasis). Bila terisi cairan patologis (efusi pleura), cairan mengendap di recessus costodiaphragmaticus (sudut terendah). Tindakan jarum penyedotan cairan disebut torakosentesis, dilakukan di sela iga ke-7 hingga ke-9 di atas batas superior iga demi menghindari saraf.'
+        : 'If the chest wall is punctured or pleura ruptured, air enters the pleural space (pneumothorax). The loss of negative pressure collapses the lung (atelectasis). Fluid accumulation (pleural effusion) pools in the costodiaphragmatic recess. Thoracocentesis (needle drainage) is done at the 7th-9th intercostal space along the upper rib border to avoid nerves.',
+      sketchfabLinks: [],
       organs: [
         {
-          name: 'Fisura Horizontalis (Horizontal Fissure)',
+          name: 'Pleura Parietalis',
           desc: lang === 'id'
-            ? 'Hanya terdapat pada paru kanan. Memisahkan lobus superior kanan dari lobus medius kanan. Berjalan horizontal setinggi kartilago kosta ke-4 di anterior.'
-            : 'Found only in the right lung. It separates the superior lobe from the middle lobe. It extends horizontally at the level of the 4th costal cartilage anteriorly.'
+            ? 'Lapisan pleura luar yang menempel pada dinding dada dalam, diafragma, dan mediastinum. Dibagi menjadi pars costalis, diaphragmatica, mediastinalis, dan cervicalis. Memiliki persarafan sensorik nyeri somatik (sangat sensitif nyeri).'
+            : 'The outer pleural layer lining the inner thoracic wall, diaphragm, and mediastinum. Divided into costal, diaphragmatic, mediastinal, and cervical parts. Somatically innervated and highly sensitive to pain.'
         },
         {
-          name: 'Fisura Obliqua Kanan (Right Oblique Fissure)',
+          name: 'Pleura Visceralis',
           desc: lang === 'id'
-            ? 'Fisura diagonal panjang pada paru kanan yang memisahkan lobus inferior kanan dari lobus medius dan superior kanan.'
-            : 'A long diagonal fissure in the right lung separating the inferior lobe from the superior and middle lobes.'
+            ? 'Lapisan pleura dalam yang melekat erat langsung pada parenkim paru dan berlanjut ke dalam fisura pulmonis. Lapisan ini tidak sensitif terhadap rangsang nyeri.'
+            : 'The inner pleural layer adhering tightly to the lung parenchyma and extending into the fissures. It is insensitive to somatic pain receptors.'
         },
         {
-          name: 'Fisura Obliqua Kiri (Left Oblique Fissure)',
+          name: 'Cavitas Pleuralis',
           desc: lang === 'id'
-            ? 'Satu-satunya fisura pada paru kiri. Memisahkan lobus superior kiri dari lobus inferior kiri. Berjalan miring dari superior posterior ke inferior anterior.'
-            : 'The sole fissure in the left lung, dividing the superior lobe from the inferior lobe. It runs obliquely from superior posterior to inferior anterior.'
+            ? 'Rongga potensial kedap udara di antara pleura viseral dan parietal yang diisi cairan serosa tipis. Berfungsi mencegah friksi serta memelihara hisapan elastis paru.'
+            : 'The airtight potential space containing serous fluid. Prevents friction and maintains the elastic suction that keeps the lungs expanded.'
         }
       ]
     },
-    'Mikro': {
-      title: lang === 'id' ? 'Struktur Mikroskopis (Microscopic)' : 'Microscopic Structures & Gas Exchange',
-      subtitle: lang === 'id' ? 'Histologi Saluran Napas Kecil dan Alveolus' : 'Histology of Small Airways and Alveoli',
+    'Pulmo': {
+      title: lang === 'id' ? 'Pulmo (Paru-Paru)' : 'Lungs (Pulmo)',
+      subtitle: lang === 'id' ? 'Struktur Makroskopis Organ Paru' : 'Macroscopic Anatomy of the Lungs',
       intro: lang === 'id'
-        ? 'Saat saluran napas bercabang melampaui bronkus tersier, mereka bertransisi menjadi bronkiolus yang berdiameter <1 mm dan tidak lagi memiliki kartilago maupun kelenjar mukosa. Dinding bronkiolus didominasi oleh serat elastik dan otot polos. Di ujung bronkiolus terdapat alveolus, unit pertukaran gas utama.'
-        : 'As airways branch beyond tertiary bronchi, they transition into bronchioles which measure <1mm in diameter and completely lack cartilage and mucosal glands. Their walls are dominated by elastic fibers and smooth muscle. At the terminal ends are the alveoli, the units of gas exchange.',
-      clinicalTitle: lang === 'id' ? 'KORELASI KLINIS: PATOFISIOLOGI ASMA & DEFISIENSI SURFAKTAN (RDS)' : 'CLINICAL CORRELATION: ASTHMA & SURFACTANT DEFICIENCY (RDS)',
+        ? 'Paru-paru adalah organ utama pernapasan berbentuk kerucut yang mengisi rongga dada. Paru kanan (pulmo dexter) memiliki 3 lobus yang dipisahkan oleh fisura horizontal dan obliqua. Paru kiri (pulmo sinister) memiliki 2 lobus yang dipisahkan oleh fisura obliqua. Perbedaan ini memberikan ruang bagi organ jantung di rongga mediastinum dada kiri.'
+        : 'The lungs are the primary organs of respiration, filling the thoracic cavity. The right lung has 3 lobes separated by horizontal and oblique fissures. The left lung has 2 lobes separated by an oblique fissure. This anatomical asymmetry provides space for the heart in the left mediastinum cavity.',
+      clinicalTitle: lang === 'id' ? 'KORELASI KLINIS: SUSUNAN HILUM & LOBEKTOMI' : 'CLINICAL CORRELATION: HILUM ARRANGEMENT & LOBECTOMY',
       clinicalDesc: lang === 'id'
-        ? 'Pada penyakit asma, terjadi hipersensitivitas otot polos bronkiolus yang memicu konstriksi (bronkokonstriksi) akibat stimulasi parasimpatis nervus vagus, mempersempit lumen jalan napas. Di tingkat alveolus, sel pneumosit tipe II mensekresikan surfaktan (DPPC) untuk menurunkan tegangan permukaan. Defisiensi surfaktan pada bayi prematur menyebabkan Respiratory Distress Syndrome (RDS) di mana alveolus kolaps.'
-        : 'In asthma, hyperreactive bronchiolar smooth muscles constrict (bronchoconstriction) under parasympathetic vagal stimulation, narrowing the airway lumen. At the alveolar level, Type II pneumocytes secrete surfactant (DPPC) to lower surface tension. Surfactant deficiency in premature infants causes Respiratory Distress Syndrome (RDS) where the alveoli collapse.',
-      organs: [
+        ? 'Pada tindakan bedah pengangkatan lobus paru (lobektomi), pembedah wajib mengisolasi pembuluh darah di radix pulmonis secara presisi pada hilum (gerbang masuk). Pada hilum kanan, susunan dari superior ke inferior adalah Bronkus-Arteri-Vena (BAV), sedangkan pada hilum kiri susunannya adalah Arteri-Bronkus-Vena (ABV) dengan arteri pulmonalis berada paling superior.'
+        : 'During surgical resection of a lung lobe (lobectomy), the surgeon must precisely isolate structures at the hilum (root gateway). On the right hilum, the superior-to-inferior order is Bronchus-Artery-Vein (BAV), while on the left it is Artery-Bronchus-Vein (ABV) with the pulmonary artery being the most superior structure.',
+      sketchfabLinks: [
         {
-          name: 'Bronkiolus (Bronchioles)',
-          desc: lang === 'id'
-            ? 'Saluran kecil tanpa kartilago. Epitel berubah dari kolumnar bersilia menjadi kuboid sederhana. Mengandung sel Clara (Club cells) yang memproduksi protein sekretori pelindung dan berfungsi sebagai sel punca jika epitel rusak.'
-            : 'Small airways lacking cartilage. Epithelium transitions from ciliated columnar to simple cuboidal. Contains Clara cells (Club cells) that produce protective secretions and act as stem cells for epithelial regeneration.'
+          url: 'https://skfb.ly/oFHLs',
+          label: { id: 'Model 3D Pulmo Dextra (Referensi 1)', en: 'Right Lung 3D Model (Ref 1)' }
         },
         {
-          name: 'Otot Polos Bronkiolus (Bronchioral Smooth Muscle)',
-          desc: lang === 'id'
-            ? 'Mengelilingi lumen bronkiolus secara heliks. Mengatur resistensi aliran udara. Stimulasi simpatis (epinefrin) menyebabkan dilatasi (relaksasi), sedangkan parasimpatis (asetilkolin) menyebabkan konstriksi.'
-            : 'Wraps helically around the bronchiolar lumen. Modulates airflow resistance. Sympathetic signals (epinephrine) trigger bronchodilation, while parasympathetic signals (acetylcholine) cause bronchoconstriction.'
+          url: 'https://skfb.ly/6VoLH',
+          label: { id: 'Model 3D Pulmo Dextra (Referensi 2)', en: 'Right Lung 3D Model (Ref 2)' }
         },
         {
-          name: 'Alveoli & Sakus Alveolar (Alveolar Sacs)',
-          desc: lang === 'id'
-            ? 'Kantung anggur mikroskopis tempat terjadinya pertukaran gas melalui difusi pasif. Membran respirasi (blood-air barrier) terdiri dari: surfaktan, epitel sel pneumosit tipe I (sangat tipis), membran basal bersama yang menyatu, dan sel endotel kapiler.'
-            : 'Microscopic sacs where respiratory gas exchange occurs via passive diffusion. The respiratory membrane (blood-air barrier) consists of: surfactant, Type I pneumocyte epithelium (ultra-thin), fused basement membrane, and capillary endothelium.'
+          url: 'https://skfb.ly/oFIIp',
+          label: { id: 'Model 3D Pulmo Sinistra (Referensi 1)', en: 'Left Lung 3D Model (Ref 1)' }
+        },
+        {
+          url: 'https://skfb.ly/6VoLQ',
+          label: { id: 'Model 3D Pulmo Sinistra (Referensi 2)', en: 'Left Lung 3D Model (Ref 2)' }
         }
-      ]
-    },
-    'Mekanisme Bernapas': {
-      title: lang === 'id' ? 'Mekanisme Bernapas (Respiratory Mechanics)' : 'Respiratory Mechanics & Pleural Spaces',
-      subtitle: lang === 'id' ? 'Fisiologi Ventilasi dan Rongga Pleura' : 'Physiology of Ventilation and Pleural Cavities',
-      intro: lang === 'id'
-        ? 'Ventilasi adalah proses mekanis keluar masuknya udara ke paru-paru berdasarkan perubahan volume dan tekanan rongga dada (Hukum Boyle). Paru-paru tidak memiliki otot rangka sendiri, sehingga pergerakannya sangat bergantung pada kontraksi otot pernapasan luar dan integritas rongga pleura yang kedap udara.'
-        : 'Ventilation is the mechanical movement of air in and out of the lungs driven by changes in thoracic volume and pressure (Boyle\'s Law). The lungs contain no skeletal muscle of their own, depending entirely on respiratory muscle contraction and a sealed pleural space.',
-      clinicalTitle: lang === 'id' ? 'KORELASI KLINIS: EFUSI PLEURA, PNEUMOTHORAX & TORAKOSENTESIS' : 'CLINICAL CORRELATION: PLEURAL EFFUSION, PNEUMOTHORAX & THORACOCENTESIS',
-      clinicalDesc: lang === 'id'
-        ? 'Jika rongga pleura terisi udara (pneumothorax) atau cairan patologis (efusi pleura), tekanan negatif intrapleura akan hilang, menyebabkan paru kolaps (atelektasis). Cairan sering menumpuk di recessus costodiaphragmaticus (titik terendah). Tindakan jarum untuk menyedot cairan tersebut disebut Torakosentesis, dilakukan di sela iga ke-7 hingga ke-9 di atas batas superior iga untuk menghindari berkas saraf-pembuluh darah.'
-        : 'If the pleural cavity fills with air (pneumothorax) or fluid (pleural effusion), the negative intrapleural pressure is lost, collapsing the lung (atelectasis). Fluid typically pools in the costodiaphragmatic recess. A needle aspiration procedure called Thoracocentesis is performed at the 7th-9th intercostal spaces along the superior rib border to avoid intercostal neurovascular bundles.',
+      ],
       organs: [
         {
-          name: 'Diafragma (Diaphragm)',
+          name: lang === 'id' ? 'Pulmo Dexter (Paru Kanan - 3 Lobus)' : 'Right Lung (3 Lobes)',
           desc: lang === 'id'
-            ? 'Otot skelet berbentuk kubah yang memisahkan rongga dada dan perut. Diinervasi oleh Nervus Phrenicus (C3-C5). Saat inspirasi, diafragma berkontraksi, mendatar, dan turun untuk memperbesar rongga dada secara vertikal, menciptakan tekanan negatif yang menyedot udara masuk.'
-            : 'A dome-shaped skeletal muscle separating the thoracic and abdominal cavities. Innervated by the Phrenic Nerve (C3-C5). During inspiration, it contracts and flattens, increasing thoracic vertical volume to create negative pressure that sucks air in.'
+            ? 'Terdiri atas Lobus Superior, Medius, dan Inferior yang dipisahkan oleh Fissura Horizontalis dan Fissura Obliqua. Paru kanan lebih besar namun lebih pendek akibat desakan hati (hepar).'
+            : 'Consists of Superior, Middle, and Inferior lobes separated by Horizontal and Oblique fissures. It is larger but shorter due to the liver pushing up the diaphragm.'
         },
         {
-          name: 'Pleura Parietalis & Visceralis (Pleura)',
+          name: lang === 'id' ? 'Pulmo Sinister (Paru Kiri - 2 Lobus)' : 'Left Lung (2 Lobes)',
           desc: lang === 'id'
-            ? 'Pleura visceralis melapisi permukaan paru secara langsung dan tidak memiliki reseptor nyeri. Pleura parietalis melapisi rongga dada dalam, diinervasi oleh nervus interkostalis dan phrenikus (sangat sensitif terhadap nyeri).'
-            : 'Visceral pleura directly covers the lung and lacks pain receptors. Parietal pleura lines the inner chest wall, innervated by intercostal and phrenic nerves (highly sensitive to pain).'
+            ? 'Terdiri atas Lobus Superior dan Inferior yang dipisahkan Fissura Obliqua. Memiliki lekukan jantung (Incisura Cardiaca) dan Lingula Pulmonis yang dianggap homolog dengan lobus medius kanan.'
+            : 'Consists of Superior and Inferior lobes separated by the Oblique fissure. Features the Cardiac Notch and the Lingula, which is homologous to the right middle lobe.'
         },
         {
-          name: 'Cavitas Pleuralis & Recessus Pleura',
+          name: 'Apex & Basis Pulmonis',
           desc: lang === 'id'
-            ? 'Rongga potensial berisi cairan serosa pelumas tipis. Tekanan intrapleura selalu sub-atmosferik (-4 mmHg pada kondisi istirahat) untuk menjaga paru tetap mengembang menempel pada dinding dada.'
-            : 'A potential space containing lubricating serous fluid. Intrapleural pressure remains subatmospheric (-4 mmHg at rest) to keep the lungs expanded against the chest wall.'
+            ? 'Apex pulmonis adalah puncak paru yang menonjol di atas kosta 1 ke basis leher. Basis pulmonis adalah permukaan bawah yang cekung menyesuaikan kubah diafragma.'
+            : 'The apex is the rounded top projecting above the 1st rib into the neck. The base is the concave lower surface resting on the dome of the diaphragm.'
+        },
+        {
+          name: 'Radix, Hilum & Margines',
+          desc: lang === 'id'
+            ? 'Radix adalah berkas struktur yang menghubungkan paru ke mediastinum, masuk melalui hilum. Paru memiliki Margo Anterior yang tajam, Margo Posterior yang tumpul membulat, dan Margo Inferior.'
+            : 'The radix is the bundle of structures connecting the lung to the mediastinum, entering at the hilum. The lung has a sharp Anterior Border, a rounded Posterior Border, and an Inferior Border.'
         }
       ]
     }
@@ -227,6 +239,51 @@ export default function SegmentMaterial({ segmentId, lang, onNext, onClose }) {
               {currentMaterial.clinicalDesc}
             </p>
           </div>
+
+          {/* Sketchfab 3D Model Reference Section */}
+          {currentMaterial.sketchfabLinks && currentMaterial.sketchfabLinks.length > 0 && (
+            <div className="material-clinical-alert" style={{ background: '#f0f9ff', borderColor: '#bae6fd', borderLeftColor: '#0284c7', color: '#0369a1' }}>
+              <strong style={{ color: '#0369a1', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Rotate3D size={14} />
+                {lang === 'id' ? 'REFERENSI MODEL 3D SKETCHFAB' : 'SKETCHFAB 3D MODEL REFERENCES'}
+              </strong>
+              <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {currentMaterial.sketchfabLinks.map((link, idx) => (
+                  <a
+                    key={idx}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      padding: '6px 12px',
+                      fontSize: '11.5px',
+                      fontWeight: '700',
+                      color: '#0284c7',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#0284c7';
+                      e.currentTarget.style.background = '#f0f6ff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#cbd5e1';
+                      e.currentTarget.style.background = '#ffffff';
+                    }}
+                  >
+                    <span>🔗 {link.label[lang]}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
 
         </div>
 

@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Layers3, Microscope, Rotate3D, Search, X, Volume2, Menu, Award, Clock, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Layers3, Microscope, Rotate3D, Search, X, Volume2, Menu, Award, Clock, ArrowLeft, ArrowRight, Maximize2, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react';
 import './styles.css';
 
 // Modular data, utilities, and components
@@ -10,6 +10,10 @@ import WelcomeScreen, { LungsIcon } from './components/WelcomeScreen';
 import MiniLegend from './components/MiniLegend';
 import PartCard from './components/PartCard';
 import LungScene from './components/LungScene';
+import TracheaSketchfabScene from './components/TracheaSketchfabScene';
+import ArborBronchialisSketchfabScene from './components/ArborBronchialisSketchfabScene';
+import PleuraScene from './components/PleuraScene';
+import PulmoScene from './components/PulmoScene';
 import AdminDashboard from './components/AdminDashboard';
 import AdminLogin from './components/AdminLogin';
 import PracticeModule from './components/PracticeModule';
@@ -30,24 +34,70 @@ function App() {
 
   // New Restructure States
   const [currentView, setCurrentView] = useState('welcome');
-  const [activeSegment, setActiveSegment] = useState('Saluran Napas');
+  const [activeSegment, setActiveSegment] = useState('Trachea');
   const [showCertificate, setShowCertificate] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false);
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
+  const [prevLeftCollapsed, setPrevLeftCollapsed] = useState(false);
+  const [prevRightCollapsed, setPrevRightCollapsed] = useState(false);
+
+  // Sync state if user exits HTML5 fullscreen using ESC key
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!document.fullscreenElement;
+      if (!isCurrentlyFullscreen && isFullscreen) {
+        setIsFullscreen(false);
+        setIsLeftSidebarCollapsed(prevLeftCollapsed);
+        setIsRightPanelCollapsed(prevRightCollapsed);
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [isFullscreen, prevLeftCollapsed, prevRightCollapsed]);
+
+  const handleToggleFullscreenState = (value) => {
+    const nextFullscreen = typeof value === 'boolean' ? value : !isFullscreen;
+    setIsFullscreen(nextFullscreen);
+    if (nextFullscreen) {
+      setPrevLeftCollapsed(isLeftSidebarCollapsed);
+      setPrevRightCollapsed(isRightPanelCollapsed);
+      setIsLeftSidebarCollapsed(true);
+      setIsRightPanelCollapsed(true);
+      
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.warn("Failed to enter browser fullscreen:", err);
+        });
+      }
+    } else {
+      setIsLeftSidebarCollapsed(prevLeftCollapsed);
+      setIsRightPanelCollapsed(prevRightCollapsed);
+      
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(err => {
+          console.warn("Failed to exit browser fullscreen:", err);
+        });
+      }
+    }
+  };
+
   const [segmentProgress, setSegmentProgress] = useState({
-    'Saluran Napas': { status: 'not_started', pretest: null, posttest: null },
-    'Lobus Paru': { status: 'not_started', pretest: null, posttest: null },
-    'Fisura': { status: 'not_started', pretest: null, posttest: null },
-    'Mikro': { status: 'not_started', pretest: null, posttest: null },
-    'Mekanisme Bernapas': { status: 'not_started', pretest: null, posttest: null }
+    'Trachea': { status: 'not_started', pretest: null, posttest: null },
+    'Arbor Bronchialis': { status: 'not_started', pretest: null, posttest: null },
+    'Pleura & Cavitas Pleuralis': { status: 'not_started', pretest: null, posttest: null },
+    'Pulmo': { status: 'not_started', pretest: null, posttest: null }
   });
 
   // Rebuild Segment Progress based on completed quiz attempts
   const rebuildSegmentProgress = (attemptsList) => {
     const defaultProgress = {
-      'Saluran Napas': { status: 'not_started', pretest: null, posttest: null },
-      'Lobus Paru': { status: 'not_started', pretest: null, posttest: null },
-      'Fisura': { status: 'not_started', pretest: null, posttest: null },
-      'Mikro': { status: 'not_started', pretest: null, posttest: null },
-      'Mekanisme Bernapas': { status: 'not_started', pretest: null, posttest: null }
+      'Trachea': { status: 'not_started', pretest: null, posttest: null },
+      'Arbor Bronchialis': { status: 'not_started', pretest: null, posttest: null },
+      'Pleura & Cavitas Pleuralis': { status: 'not_started', pretest: null, posttest: null },
+      'Pulmo': { status: 'not_started', pretest: null, posttest: null }
     };
 
     // Sort attempts chronologically
@@ -82,13 +132,13 @@ function App() {
     return path === '/admin/login' || hash === '#/admin/login' || hash.includes('/admin/login');
   });
 
-  const [activeId, setActiveId] = useState('trakea');
+  const [activeId, setActiveId] = useState('trachea-pars-cervicalis');
   const [activeLayer, setActiveLayer] = useState('Semua');
   const [query, setQuery] = useState('');
   const [showLabels, setShowLabels] = useState(true);
   const [notice, setNotice] = useState('Klik titik + atau daftar bagian untuk mulai belajar.');
   
-  const [exploredList, setExploredList] = useState(['trakea']);
+  const [exploredList, setExploredList] = useState(['trachea-pars-cervicalis']);
   const [breathingRate, setBreathingRate] = useState(1); // 0 = Hold, 1 = Normal, 2 = Cepat
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
@@ -419,7 +469,7 @@ function App() {
           .maybeSingle();
 
         if (!error && data) {
-          const list = data.explored_list || ['trakea'];
+          const list = data.explored_list || ['trachea-pars-cervicalis'];
           setExploredList(list);
           if (data.lang) setLang(data.lang);
           if (list.length > 0) {
@@ -440,13 +490,13 @@ function App() {
         const records = saved ? JSON.parse(saved) : [];
         const existing = records.find(r => r.username.toLowerCase() === studentName.toLowerCase());
         if (existing) {
-          setExploredList(existing.exploredList || ['trakea']);
+          setExploredList(existing.exploredList || ['trachea-pars-cervicalis']);
           if (existing.exploredList && existing.exploredList.length > 0) {
             setActiveId(existing.exploredList[existing.exploredList.length - 1]);
           }
         } else {
-          setExploredList(['trakea']);
-          setActiveId('trakea');
+          setExploredList(['trachea-pars-cervicalis']);
+          setActiveId('trachea-pars-cervicalis');
         }
       } catch (e) {
         console.error('Failed to load existing student record:', e);
@@ -585,8 +635,8 @@ function App() {
           onLogout={() => {
             setIsLanguageSelected(false);
             setCurrentStudent('');
-            setExploredList(['trakea']);
-            setActiveId('trakea');
+            setExploredList(['trachea-pars-cervicalis']);
+            setActiveId('trachea-pars-cervicalis');
             setCurrentView('welcome');
             playChime('click');
           }}
@@ -600,8 +650,8 @@ function App() {
           type="pretest"
           lang={lang}
           username={currentStudent}
-          onComplete={async (score) => {
-            await logPracticeAttempt(`Pre-test: ${activeSegment}`, score, 5);
+          onComplete={async (score, total) => {
+            await logPracticeAttempt(`Pre-test: ${activeSegment}`, score, total);
             setCurrentView('material');
           }}
           onClose={() => {
@@ -640,8 +690,8 @@ function App() {
           lang={lang}
           username={currentStudent}
           pretestScore={segmentProgress[activeSegment]?.pretest}
-          onComplete={async (score) => {
-            await logPracticeAttempt(`Kuis: ${activeSegment}`, score, 5);
+          onComplete={async (score, total) => {
+            await logPracticeAttempt(`Kuis: ${activeSegment}`, score, total);
             setCurrentView('home');
           }}
           onClose={() => {
@@ -665,8 +715,8 @@ function App() {
             setShowCertificate(false);
             setIsLanguageSelected(false);
             setCurrentStudent('');
-            setExploredList(['trakea']);
-            setActiveId('trakea');
+            setExploredList(['trachea-pars-cervicalis']);
+            setActiveId('trachea-pars-cervicalis');
             setCurrentView('welcome');
             playChime('click');
           }}
@@ -676,21 +726,37 @@ function App() {
       {/* 3D Simulation Viewer (only rendered in '3d_view' view state) */}
       {currentView === '3d_view' && (
         <>
-          {/* Floating progress banner for active segment */}
-          <div className="viewer-progress-banner">
-            <Microscope size={14} color="#0284c7" />
-            <span>
-              {lang === 'id' ? 'Segmen:' : 'Segment:'} <strong>{activeSegment}</strong> · {lang === 'id' ? 'Eksplorasi:' : 'Explored:'} <strong>{segmentExploredCount} / {segmentParts.length}</strong>
-            </span>
-          </div>
 
-          {/* Floating proceed to post-test button */}
-          <button className="viewer-next-step-btn" onClick={handleProceedToPosttest}>
-            <span>{lang === 'id' ? 'Lanjut ke Kuis Segmen' : 'Proceed to Segment Quiz'}</span>
-            <ArrowRight size={15} />
-          </button>
 
-          <main className="app-shell">
+          <main 
+            className={`app-shell ${isFullscreen ? 'fullscreen-mode' : ''}`}
+            style={{
+              gridTemplateColumns: `${isLeftSidebarCollapsed ? '0px' : '350px'} minmax(0, 1fr) ${isRightPanelCollapsed ? '0px' : '400px'}`,
+              gap: (isLeftSidebarCollapsed && isRightPanelCollapsed) ? '0px' : '20px',
+              padding: (isLeftSidebarCollapsed && isRightPanelCollapsed) ? '0px' : '20px'
+            }}
+          >
+            {/* Desktop Floating Expand Buttons */}
+            {isLeftSidebarCollapsed && (
+              <button 
+                className="floating-expand-btn left"
+                onClick={() => setIsLeftSidebarCollapsed(false)}
+                title={lang === 'id' ? 'Tampilkan Sidebar' : 'Show Sidebar'}
+              >
+                <ChevronRight size={18} />
+              </button>
+            )}
+
+            {isRightPanelCollapsed && (
+              <button 
+                className="floating-expand-btn right"
+                onClick={() => setIsRightPanelCollapsed(false)}
+                title={lang === 'id' ? 'Tampilkan Detail' : 'Show Details'}
+              >
+                <ChevronLeft size={18} />
+              </button>
+            )}
+
             {/* Mobile Header Toolbar */}
             <header className="mobile-header">
               <button className="menu-btn" onClick={() => setIsSidebarOpen(true)}>
@@ -709,7 +775,10 @@ function App() {
             {/* Backdrop for mobile drawer */}
             {isSidebarOpen && <div className="sidebar-backdrop" onClick={() => setIsSidebarOpen(false)} />}
 
-            <aside className={`left-panel glass-panel ${isSidebarOpen ? 'open' : ''}`}>
+            <aside 
+              className={`left-panel glass-panel ${isSidebarOpen ? 'open' : ''}`}
+              style={{ display: isLeftSidebarCollapsed ? 'none' : 'flex' }}
+            >
               
               {/* Return to Dashboard back button */}
               <button 
@@ -732,6 +801,14 @@ function App() {
                   <p>{t.brandSubtitle}</p>
                   <h1>{t.brandTitle}</h1>
                 </div>
+                <button 
+                  className="desktop-collapse-btn" 
+                  onClick={() => setIsLeftSidebarCollapsed(true)}
+                  title={lang === 'id' ? 'Sembunyikan Sidebar' : 'Collapse Sidebar'}
+                  style={{ marginLeft: 'auto' }}
+                >
+                  <ChevronLeft size={16} />
+                </button>
                 <button className="close-sidebar-btn" onClick={() => setIsSidebarOpen(false)}>
                   <X size={18} />
                 </button>
@@ -747,6 +824,10 @@ function App() {
                 <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.searchPlaceholder} />
               </div>
               
+              {!isFullscreen && (
+                <div id="segment-2d-portal-target" style={{ width: '100%', marginBottom: '14px' }} />
+              )}
+
               <div className="part-list">
                 {filteredParts.map((part) => {
                   const isLearned = exploredList.includes(part.id);
@@ -774,6 +855,20 @@ function App() {
             </aside>
 
             <section className="viewer-panel">
+              {/* Floating progress banner for active segment */}
+              <div className="viewer-progress-banner">
+                <Microscope size={14} color="#0284c7" />
+                <span>
+                  {lang === 'id' ? 'Segmen:' : 'Segment:'} <strong>{activeSegment}</strong> · {lang === 'id' ? 'Eksplorasi:' : 'Explored:'} <strong>{segmentExploredCount} / {segmentParts.length}</strong>
+                </span>
+              </div>
+
+              {/* Floating proceed to post-test button */}
+              <button className="viewer-next-step-btn" onClick={handleProceedToPosttest}>
+                <span>{lang === 'id' ? 'Lanjut ke Kuis Segmen' : 'Proceed to Segment Quiz'}</span>
+                <ArrowRight size={15} />
+              </button>
+
               <div className="top-toolbar glass-panel">
                 <div>
                   <p className="eyebrow">{t.toolbarSubtitle}</p>
@@ -808,31 +903,105 @@ function App() {
                   <button className="soft-button" onClick={() => setShowLabels((value) => !value)}>
                     {showLabels ? t.toolbarHidePin : t.toolbarShowPin}
                   </button>
+
+                  <button 
+                    className={`soft-button ${isFullscreen ? 'active' : ''}`}
+                    onClick={() => {
+                      handleToggleFullscreenState();
+                      playChime('click');
+                    }}
+                    title={lang === 'id' ? 'Layar Penuh' : 'Fullscreen'}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    {isFullscreen ? (
+                      <>
+                        <Minimize2 size={13} />
+                        <span>{lang === 'id' ? 'Keluar Layar Penuh' : 'Exit Fullscreen'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Maximize2 size={13} />
+                        <span>{lang === 'id' ? 'Layar Penuh' : 'Fullscreen'}</span>
+                      </>
+                    )}
+                  </button>
                   <span className="hint"><Rotate3D size={16} /> {t.toolbarHint}</span>
                 </div>
               </div>
 
               {/* Dynamic 3D Laboratory Scene */}
-              <LungScene
-                parts={filteredParts}
-                activeId={activeId}
-                activePart={activePart}
-                onSelect={selectPart}
-                showLabels={showLabels}
-                setNotice={setNotice}
-                breathingRate={breathingRate}
-                lang={lang}
-              />
+              {activeSegment === 'Trachea' ? (
+                <TracheaSketchfabScene
+                  activeId={activeId}
+                  activePart={activePart}
+                  onSelect={selectPart}
+                  showLabels={showLabels}
+                  setNotice={setNotice}
+                  breathingRate={breathingRate}
+                  lang={lang}
+                  isFullscreen={isFullscreen}
+                  setIsFullscreen={handleToggleFullscreenState}
+                />
+              ) : activeSegment === 'Arbor Bronchialis' ? (
+                <ArborBronchialisSketchfabScene
+                  activeId={activeId}
+                  activePart={activePart}
+                  onSelect={selectPart}
+                  showLabels={showLabels}
+                  setNotice={setNotice}
+                  breathingRate={breathingRate}
+                  lang={lang}
+                  isFullscreen={isFullscreen}
+                  setIsFullscreen={handleToggleFullscreenState}
+                />
+              ) : activeSegment === 'Pleura & Cavitas Pleuralis' ? (
+                <PleuraScene
+                  activeId={activeId}
+                  activePart={activePart}
+                  onSelect={selectPart}
+                  showLabels={showLabels}
+                  setNotice={setNotice}
+                  breathingRate={breathingRate}
+                  lang={lang}
+                  isFullscreen={isFullscreen}
+                  setIsFullscreen={handleToggleFullscreenState}
+                />
+              ) : activeSegment === 'Pulmo' ? (
+                <PulmoScene
+                  activeId={activeId}
+                  activePart={activePart}
+                  onSelect={selectPart}
+                  showLabels={showLabels}
+                  setNotice={setNotice}
+                  breathingRate={breathingRate}
+                  lang={lang}
+                  isFullscreen={isFullscreen}
+                  setIsFullscreen={handleToggleFullscreenState}
+                />
+              ) : (
+                <LungScene
+                  parts={filteredParts}
+                  activeId={activeId}
+                  activePart={activePart}
+                  onSelect={selectPart}
+                  showLabels={showLabels}
+                  setNotice={setNotice}
+                  breathingRate={breathingRate}
+                  lang={lang}
+                />
+              )}
               
-              {/* Breathing Simulation Controller Panel */}
-              <div className="breathing-rate-controller glass-panel">
-                <span className="controller-title">{t.simulatorTitle}</span>
-                <div className="rate-selector-grid">
-                  <button className={breathingRate === 0 ? 'rate-btn active hold' : 'rate-btn'} onClick={() => setBreathingRate(0)}>{t.simulatorHold}</button>
-                  <button className={breathingRate === 1 ? 'rate-btn active normal' : 'rate-btn'} onClick={() => setBreathingRate(1)}>{t.simulatorNormal}</button>
-                  <button className={breathingRate === 2 ? 'rate-btn active rapid' : 'rate-btn'} onClick={() => setBreathingRate(2)}>{t.simulatorRapid}</button>
+              {/* Breathing Simulation Controller Panel (Only visible for segments other than Trachea, Arbor Bronchialis, and Pulmo) */}
+              {activeSegment !== 'Trachea' && activeSegment !== 'Arbor Bronchialis' && activeSegment !== 'Pulmo' && (
+                <div className="breathing-rate-controller glass-panel">
+                  <span className="controller-title">{t.simulatorTitle}</span>
+                  <div className="rate-selector-grid">
+                    <button className={breathingRate === 0 ? 'rate-btn active hold' : 'rate-btn'} onClick={() => setBreathingRate(0)}>{t.simulatorHold}</button>
+                    <button className={breathingRate === 1 ? 'rate-btn active normal' : 'rate-btn'} onClick={() => setBreathingRate(1)}>{t.simulatorNormal}</button>
+                    <button className={breathingRate === 2 ? 'rate-btn active rapid' : 'rate-btn'} onClick={() => setBreathingRate(2)}>{t.simulatorRapid}</button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="notice glass-panel">{notice}</div>
             </section>
@@ -840,10 +1009,27 @@ function App() {
             {/* Floating sheet handler for mobile sheet */}
             {isSheetExpanded && <div className="sheet-backdrop" onClick={() => setIsSheetExpanded(false)} />}
 
-            <aside className={`right-panel ${isSheetExpanded ? 'expanded' : ''}`}>
+            <aside 
+              className={`right-panel ${isSheetExpanded ? 'expanded' : ''}`}
+              style={{ display: isRightPanelCollapsed ? 'none' : 'flex' }}
+            >
               <div className="sheet-drag-handle" onClick={() => setIsSheetExpanded(!isSheetExpanded)}>
                 <div className="handle-bar" />
               </div>
+
+              {/* Desktop Collapse Button */}
+              <div className="right-panel-header-desktop" style={{ width: '100%', display: 'flex', justifyContent: 'flex-end', padding: '0 8px 8px 0' }}>
+                <button 
+                  className="desktop-collapse-btn text-btn"
+                  onClick={() => setIsRightPanelCollapsed(true)}
+                  title={lang === 'id' ? 'Sembunyikan Panel' : 'Collapse Panel'}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '700', color: '#64748b' }}
+                >
+                  <span>{lang === 'id' ? 'Sembunyikan Detail' : 'Sembunyikan Detail'}</span>
+                  <ChevronRight size={15} />
+                </button>
+              </div>
+
               <PartCard 
                 part={activePart} 
                 exploredList={exploredList}

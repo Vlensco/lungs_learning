@@ -110,20 +110,22 @@ function BoundsController({ activePart, parentGroupRef }) {
             
             let matches = objNameNorm.includes(activeIdNorm) || activeIdNorm.includes(objNameNorm);
             if (activePart.id === 'lobus-medial-kanan' && objNameNorm.includes('lobusmediuskanan')) matches = true;
-            if (activePart.id === 'trakea' && objNameNorm.includes('trakea')) matches = true;
-            if (activePart.id.startsWith('bronkus') && objNameNorm.includes('bronkus')) matches = true;
+            if ((activePart.id.startsWith('trachea') || activePart.id === 'kartilago-trakea' || activePart.id === 'karina' || activePart.id === 'ligamenta-annularia') && objNameNorm.includes('trakea')) matches = true;
+            if ((activePart.id.startsWith('bronkus') || activePart.id.startsWith('bronkiolus') || activePart.id === 'otot-polos' || activePart.id === 'alveoli') && objNameNorm.includes('bronkus')) matches = true;
+            if ((activePart.layer.id.includes('Pleura') || activePart.id.startsWith('pleura') || activePart.id === 'cavitas-pleuralis') && (objNameNorm.includes('lobus') || objNameNorm.includes('paru'))) matches = true;
 
             // Fissure zoom target mappings: focus on the adjoining lobes
             if (activePart.id === 'fisura-horizontal-kanan' && (objNameNorm.includes('lobussuperiorkanan') || objNameNorm.includes('lobusmediuskanan'))) matches = true;
             if (activePart.id === 'fisura-oblique-kanan' && (objNameNorm.includes('lobusinferiorkanan') || objNameNorm.includes('lobusmediuskanan') || objNameNorm.includes('lobussuperiorkanan'))) matches = true;
             if (activePart.id === 'fisura-oblique-kiri' && (objNameNorm.includes('lobussuperiorkiri') || objNameNorm.includes('lobusinferiorkiri'))) matches = true;
 
-            // Microscopic zoom target mappings: focus on the bronchial tree
-            const isMicro = activePart.layer.id === 'Mikro' || 
-                            activePart.id === 'bronkiolus' || 
-                            activePart.id === 'otot-polos-bronkiolus' || 
-                            activePart.id === 'sakus-alveolar';
-            if (isMicro && objNameNorm.includes('bronkus')) matches = true;
+            // Landmarks zoom targets
+            if (activePart.id === 'apex-pulmonis' && (objNameNorm.includes('lobussuperiorkanan') || objNameNorm.includes('lobussuperiorkiri'))) matches = true;
+            if (activePart.id === 'basis-pulmonis' && (objNameNorm.includes('lobusinferiorkanan') || objNameNorm.includes('lobusinferiorkiri'))) matches = true;
+            if ((activePart.id === 'radix-pulmonis' || activePart.id === 'hilum-pulmonis' || activePart.id === 'ligamentum-pulmonale') && (objNameNorm.includes('lobus') || objNameNorm.includes('bronkus'))) matches = true;
+            if (activePart.id === 'margo-anterior' && (objNameNorm.includes('lobussuperiorkanan') || objNameNorm.includes('lobussuperiorkiri') || objNameNorm.includes('lobusmediuskanan'))) matches = true;
+            if ((activePart.id === 'margo-inferior' || activePart.id === 'margo-posterior') && (objNameNorm.includes('lobusinferiorkanan') || objNameNorm.includes('lobusinferiorkiri'))) matches = true;
+            if ((activePart.id === 'incisura-cardiaca' || activePart.id === 'lingula-pulmonis') && objNameNorm.includes('lobussuperiorkiri')) matches = true;
 
             if (matches) {
               targetMesh = child;

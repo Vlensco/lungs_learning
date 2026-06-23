@@ -3,6 +3,7 @@ import { Users, Award, Trash2, Download, RefreshCw, X, ShieldAlert, Microscope, 
 import { LungsIcon } from './WelcomeScreen';
 import { playChime } from '../utils/audioSpeech';
 import { supabase } from '../utils/supabaseClient';
+import { partData } from '../data/partData';
 
 export default function AdminDashboard({ onClose }) {
   const [records, setRecords] = useState([]);
@@ -27,7 +28,7 @@ export default function AdminDashboard({ onClose }) {
           const formatted = dbStudents.map(s => ({
             username: s.username,
             lang: s.lang || 'id',
-            exploredList: s.explored_list || ['trakea'],
+            exploredList: s.explored_list || ['trachea-pars-cervicalis'],
             average_score: s.average_score || 0,
             timestamp: s.updated_at || s.created_at || Date.now()
           }));
@@ -76,14 +77,14 @@ export default function AdminDashboard({ onClose }) {
         quizTakers += 1;
       }
 
-      const percent = Math.round((masteredCount / 19) * 100);
+      const percent = Math.round((masteredCount / partData.length) * 100);
       if (percent > topProgress) {
         topProgress = percent;
         topStudent = `${r.username} (${percent}%)`;
       }
     });
 
-    const avgMastery = Math.round(((totalMastered / (totalStudents * 19)) * 100));
+    const avgMastery = Math.round(((totalMastered / (totalStudents * partData.length)) * 100));
     const avgQuizScore = quizTakers > 0 ? Math.round(totalQuizScores / quizTakers) : 0;
 
     return {
@@ -154,7 +155,7 @@ export default function AdminDashboard({ onClose }) {
 
     records.forEach(r => {
       const count = Array.isArray(r.exploredList) ? r.exploredList.length : 0;
-      const percent = Math.round((count / 19) * 100);
+      const percent = Math.round((count / partData.length) * 100);
       const scoreStr = r.average_score > 0 ? `${r.average_score}%` : 'N/A';
       const dateStr = new Date(r.timestamp).toLocaleString('id-ID');
       csvContent += `"${r.username}","${r.lang.toUpperCase()}","${dateStr}",${count},${percent}%,${scoreStr}\n`;
@@ -263,7 +264,7 @@ export default function AdminDashboard({ onClose }) {
             <div className="stat-info">
               <span className="stat-label">Rata-rata Penguasaan</span>
               <strong className="stat-value">{stats.avgMastery}%</strong>
-              <span className="stat-desc">Dari total 19 struktur klinis</span>
+              <span className="stat-desc">Dari total {partData.length} struktur klinis</span>
             </div>
           </article>
 
@@ -326,7 +327,7 @@ export default function AdminDashboard({ onClose }) {
                 <tbody>
                   {records.map((student) => {
                     const masteredCount = Array.isArray(student.exploredList) ? student.exploredList.length : 0;
-                    const progressPercent = Math.round((masteredCount / 19) * 100);
+                    const progressPercent = Math.round((masteredCount / partData.length) * 100);
                     const joinDate = new Date(student.timestamp).toLocaleString('id-ID', {
                       day: 'numeric',
                       month: 'short',
@@ -360,7 +361,7 @@ export default function AdminDashboard({ onClose }) {
                               }} 
                             />
                           </div>
-                          <small>{masteredCount} / 19 Organ</small>
+                          <small>{masteredCount} / {partData.length} Organ</small>
                         </td>
                         <td>
                           <strong className={`score-badge ${student.average_score >= 80 ? 'high' : student.average_score >= 50 ? 'mid' : 'low'}`}>
@@ -453,12 +454,11 @@ export default function AdminDashboard({ onClose }) {
                     {detailStudent.attempts.map((attempt, idx) => {
                       const pct = Math.round((attempt.score / attempt.totalQuestions) * 100);
                       const catMap = {
-                        'Semua': 'Semua Lapisan',
-                        'Saluran Napas': 'Saluran Napas',
-                        'Lobus Paru': 'Lobus Paru',
-                        'Fisura': 'Fisura',
-                        'Mikro': 'Mikro',
-                        'Mekanisme Bernapas': 'Mekanisme Bernapas'
+                        'Semua': 'Semua Segmen',
+                        'Trachea': 'Trachea (Trakea)',
+                        'Arbor Bronchialis': 'Arbor Bronchialis',
+                        'Pleura & Cavitas Pleuralis': 'Pleura & Cavitas Pleuralis',
+                        'Pulmo': 'Pulmo (Paru-Paru)'
                       };
                       const dateStr = new Date(attempt.timestamp).toLocaleString('id-ID', {
                         day: 'numeric', month: 'short', year: 'numeric',

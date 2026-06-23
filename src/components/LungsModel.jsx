@@ -70,40 +70,78 @@ export default function LungsModel({ onSurfaceClick, activePart, breathingRate }
           // Match logic: check if name matches or contains ID
           let isCurrentPart = objNameNorm.includes(activeIdNorm) || activeIdNorm.includes(objNameNorm);
 
-          // Handle special anatomical mappings
+          // Trachea parts highlight mapping
+          const isTracheaRelated = activePart.id.startsWith('trachea') || 
+                                   activePart.id === 'kartilago-trakea' || 
+                                   activePart.id === 'karina' || 
+                                   activePart.id === 'ligamenta-annularia' ||
+                                   activePart.id === 'trakea';
+          if (isTracheaRelated && objNameNorm.includes('trakea')) {
+            isCurrentPart = true;
+          }
+
+          // Bronchus parts highlight mapping
+          const isBronchusRelated = activePart.id.startsWith('bronkus') || 
+                                    activePart.id.startsWith('bronkiolus') || 
+                                    activePart.id === 'otot-polos' || 
+                                    activePart.id === 'alveoli';
+          if (isBronchusRelated && objNameNorm.includes('bronkus')) {
+            isCurrentPart = true;
+          }
+
+          // Pleura parts highlight mapping (light up both lungs)
+          const isPleuraRelated = activePart.layer.id.includes('Pleura') || 
+                                  activePart.id.startsWith('pleura') || 
+                                  activePart.id === 'cavitas-pleuralis';
+          if (isPleuraRelated && (objNameNorm.includes('lobus') || objNameNorm.includes('paru'))) {
+            isCurrentPart = true;
+          }
+
+          // Special Pulmo mappings
+          if (activePart.id === 'lobus-superior-kanan' && objNameNorm.includes('lobussuperiorkanan')) {
+            isCurrentPart = true;
+          }
           if (activePart.id === 'lobus-medial-kanan' && objNameNorm.includes('lobusmediuskanan')) {
             isCurrentPart = true;
           }
-          if (activePart.id === 'trakea' && objNameNorm.includes('trakea')) {
+          if (activePart.id === 'lobus-inferior-kanan' && (objNameNorm.includes('lobusinferiorkanan') || objNameNorm.includes('lobusinferiorkanandalam'))) {
             isCurrentPart = true;
           }
-          if (activePart.id.startsWith('bronkus') && objNameNorm.includes('bronkus')) {
+          if (activePart.id === 'lobus-superior-kiri' && (objNameNorm.includes('lobussuperiorkiri') || objNameNorm.includes('lobussuperiorkiridalam'))) {
+            isCurrentPart = true;
+          }
+          if (activePart.id === 'lobus-inferior-kiri' && objNameNorm.includes('lobusinferiorkiri')) {
             isCurrentPart = true;
           }
 
-          // Fissure highlights: light up adjoining lobes to define boundary lines
-          if (activePart.id === 'fisura-horizontal-kanan') {
-            if (objNameNorm.includes('lobussuperiorkanan') || objNameNorm.includes('lobusmediuskanan')) {
-              isCurrentPart = true;
-            }
+          // Fissures
+          if (activePart.id === 'fisura-horizontal-kanan' && (objNameNorm.includes('lobussuperiorkanan') || objNameNorm.includes('lobusmediuskanan'))) {
+            isCurrentPart = true;
           }
-          if (activePart.id === 'fisura-oblique-kanan') {
-            if (objNameNorm.includes('lobusinferiorkanan') || objNameNorm.includes('lobusmediuskanan') || objNameNorm.includes('lobussuperiorkanan')) {
-              isCurrentPart = true;
-            }
+          if (activePart.id === 'fisura-oblique-kanan' && (objNameNorm.includes('lobusinferiorkanan') || objNameNorm.includes('lobusmediuskanan') || objNameNorm.includes('lobussuperiorkanan'))) {
+            isCurrentPart = true;
           }
-          if (activePart.id === 'fisura-oblique-kiri') {
-            if (objNameNorm.includes('lobussuperiorkiri') || objNameNorm.includes('lobusinferiorkiri')) {
-              isCurrentPart = true;
-            }
+          if (activePart.id === 'fisura-oblique-kiri' && (objNameNorm.includes('lobussuperiorkiri') || objNameNorm.includes('lobusinferiorkiri'))) {
+            isCurrentPart = true;
           }
 
-          // Microscopic highlights: light up the bronchial tree as their anatomical origin
-          const isMicroPart = activePart.layer.id === 'Mikro' || 
-                              activePart.id === 'bronkiolus' || 
-                              activePart.id === 'otot-polos-bronkiolus' || 
-                              activePart.id === 'sakus-alveolar';
-          if (isMicroPart && objNameNorm.includes('bronkus')) {
+          // Landmarks
+          if (activePart.id === 'apex-pulmonis' && (objNameNorm.includes('lobussuperiorkanan') || objNameNorm.includes('lobussuperiorkiri'))) {
+            isCurrentPart = true;
+          }
+          if (activePart.id === 'basis-pulmonis' && (objNameNorm.includes('lobusinferiorkanan') || objNameNorm.includes('lobusinferiorkiri'))) {
+            isCurrentPart = true;
+          }
+          if ((activePart.id === 'radix-pulmonis' || activePart.id === 'hilum-pulmonis' || activePart.id === 'ligamentum-pulmonale') && (objNameNorm.includes('lobus') || objNameNorm.includes('bronkus'))) {
+            isCurrentPart = true;
+          }
+          if (activePart.id === 'margo-anterior' && (objNameNorm.includes('lobussuperiorkanan') || objNameNorm.includes('lobussuperiorkiri') || objNameNorm.includes('lobusmediuskanan'))) {
+            isCurrentPart = true;
+          }
+          if ((activePart.id === 'margo-inferior' || activePart.id === 'margo-posterior') && (objNameNorm.includes('lobusinferiorkanan') || objNameNorm.includes('lobusinferiorkiri'))) {
+            isCurrentPart = true;
+          }
+          if ((activePart.id === 'incisura-cardiaca' || activePart.id === 'lingula-pulmonis') && objNameNorm.includes('lobussuperiorkiri')) {
             isCurrentPart = true;
           }
 

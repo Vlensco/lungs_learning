@@ -29,29 +29,29 @@ export default function CertificateModal({ username, lang, segmentProgress, onCl
   };
 
   const segments = [
-    { id: 'Saluran Napas', title: lang === 'id' ? 'Saluran Napas Utama' : 'Main Airways' },
-    { id: 'Lobus Paru', title: lang === 'id' ? 'Lobus Paru' : 'Lung Lobes' },
-    { id: 'Fisura', title: lang === 'id' ? 'Fisura Paru' : 'Anatomical Fissures' },
-    { id: 'Mikro', title: lang === 'id' ? 'Struktur Mikroskopis' : 'Microscopic Structures' },
-    { id: 'Mekanisme Bernapas', title: lang === 'id' ? 'Mekanisme Bernapas' : 'Respiratory Mechanics' }
+    { id: 'Trachea', title: lang === 'id' ? 'Trachea (Trakea)' : 'Trachea' },
+    { id: 'Arbor Bronchialis', title: lang === 'id' ? 'Arbor Bronchialis' : 'Bronchial Tree' },
+    { id: 'Pleura & Cavitas Pleuralis', title: lang === 'id' ? 'Pleura & Cavitas Pleuralis' : 'Pleura & Pleural Cavity' },
+    { id: 'Pulmo', title: lang === 'id' ? 'Pulmo (Paru-Paru)' : 'Lungs (Pulmo)' }
   ];
 
-  // Calculate scores
-  let totalPre = 0;
-  let totalPost = 0;
-  let count = 0;
+  // Calculate scores based on different question counts per segment
+  let totalPrePoints = 0;
+  let totalPostPoints = 0;
+  let totalMaxPoints = 0;
 
   segments.forEach(seg => {
     const prog = segmentProgress[seg.id];
+    const segMax = seg.id === 'Pleura & Cavitas Pleuralis' ? 5 : 10;
     if (prog) {
-      totalPre += prog.pretest || 0;
-      totalPost += prog.posttest || 0;
-      count++;
+      totalPrePoints += prog.pretest || 0;
+      totalPostPoints += prog.posttest || 0;
+      totalMaxPoints += segMax;
     }
   });
 
-  const avgPostPercent = Math.round(((totalPost / (count * 5)) * 100)) || 0;
-  const avgPrePercent = Math.round(((totalPre / (count * 5)) * 100)) || 0;
+  const avgPostPercent = totalMaxPoints > 0 ? Math.round((totalPostPoints / totalMaxPoints) * 100) : 0;
+  const avgPrePercent = totalMaxPoints > 0 ? Math.round((totalPrePoints / totalMaxPoints) * 100) : 0;
   const improvement = avgPostPercent - avgPrePercent;
 
   const handlePrint = () => {
@@ -99,16 +99,18 @@ export default function CertificateModal({ username, lang, segmentProgress, onCl
             <tbody>
               {segments.map(seg => {
                 const prog = segmentProgress[seg.id] || { pretest: 0, posttest: 0 };
-                const imp = prog.posttest - prog.pretest;
-                const impPercent = imp * 20;
+                const segMax = seg.id === 'Pleura & Cavitas Pleuralis' ? 5 : 10;
+                const prePct = Math.round(((prog.pretest || 0) / segMax) * 100);
+                const postPct = Math.round(((prog.posttest || 0) / segMax) * 100);
+                const impPercent = postPct - prePct;
 
                 return (
                   <tr key={seg.id}>
                     <td>{seg.title}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 600 }}>{prog.pretest}/5</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#0284c7' }}>{prog.posttest}/5</td>
-                    <td style={{ textAlign: 'right', fontWeight: 800, color: imp >= 0 ? '#10b981' : '#ef4444' }}>
-                      {imp >= 0 ? '+' : ''}{impPercent}%
+                    <td style={{ textAlign: 'right', fontWeight: 600 }}>{prog.pretest || 0}/{segMax}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#0284c7' }}>{prog.posttest || 0}/{segMax}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 800, color: impPercent >= 0 ? '#10b981' : '#ef4444' }}>
+                      {impPercent >= 0 ? '+' : ''}{impPercent}%
                     </td>
                   </tr>
                 );
