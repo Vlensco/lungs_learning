@@ -42,6 +42,15 @@ walkthrough.md
 task.md
 implementation_plan.md
 
+# Helper scripts & temporary extraction artifacts
+inspect_bounds.js
+inspect_nodes.js
+scratch_find_elements.py
+word/
+*.docx
+*_extracted.txt
+
+
 # Environment variables
 .env
 .env.local

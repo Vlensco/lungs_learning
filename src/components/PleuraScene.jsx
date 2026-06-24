@@ -1,23 +1,7 @@
-import React, { useState, useMemo, useEffect, useRef, Suspense } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Html, Environment, ContactShadows } from '@react-three/drei';
-import { Rotate3D, BookOpen, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
-import * as THREE from 'three';
-import LungsModel from './LungsModel';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { BookOpen, Maximize2, Minimize2 } from 'lucide-react';
 import { partData } from '../data/partData';
-
-function Loader() {
-  return (
-    <Html center>
-      <div className="loader-card">
-        <div className="loader-orb" style={{ margin: '0 auto 12px auto' }} />
-        <p style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textAlign: 'center' }}>
-          Loading 3D Model...
-        </p>
-      </div>
-    </Html>
-  );
-}
+import { playChime } from '../utils/audioSpeech';
 
 export default function PleuraScene({
   activeId,
@@ -32,7 +16,17 @@ export default function PleuraScene({
 }) {
   const [activeTab, setActiveTab] = useState('diagram'); // For mobile tabs: 'diagram' or 'canvas'
   const [hoveredId, setHoveredId] = useState(null);
-  const controlsRef = useRef(null);
+
+  // States for collapsible/floating 2D diagram card (matches PulmoScene.jsx/Trachea format)
+  const [isDiagramCollapsed, setIsDiagramCollapsed] = useState(false);
+  const [isDiagramOpen, setIsDiagramOpen] = useState(true);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
+  const [position, setPosition] = useState({ x: 20, y: 130 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const [size, setSize] = useState({ width: 380, height: 490 });
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0 });
 
   // Filter parts specifically for this segment
   const pleuraParts = useMemo(() => {
@@ -46,45 +40,6 @@ export default function PleuraScene({
       setNotice(desc);
     }
   }, [activePart, lang, setNotice]);
-
-  const partsList = [
-    {
-      id: 'pleura-parietalis',
-      color: '#16a34a', // Green
-      name: { id: 'Pleura Parietalis', en: 'Parietal Pleura' },
-      x: 60,
-      y: 250,
-      targetX: 280,
-      targetY: 310,
-      badgeClass: 'green-badge'
-    },
-    {
-      id: 'cavitas-pleuralis',
-      color: '#22c55e', // Light Green
-      name: { id: 'Cavitas Pleuralis', en: 'Pleural Cavity' },
-      x: 60,
-      y: 330,
-      targetX: 295,
-      targetY: 360,
-      badgeClass: 'lightgreen-badge'
-    },
-    {
-      id: 'pleura-visceralis',
-      color: '#15803d', // Dark Green
-      name: { id: 'Pleura Visceralis', en: 'Visceral Pleura' },
-      x: 550,
-      y: 280,
-      targetX: 480,
-      targetY: 320,
-      badgeClass: 'darkgreen-badge'
-    }
-  ];
-
-  const handleResetRotation = () => {
-    if (controlsRef.current) {
-      controlsRef.current.reset();
-    }
-  };
 
   const isHighlighted = (id) => {
     return activeId === id || hoveredId === id;
@@ -101,12 +56,80 @@ export default function PleuraScene({
     };
   };
 
+  const handleMouseDown = (e) => {
+    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+    setIsDragging(true);
+    dragStart.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    };
+  };
+
+  const handleResizeMouseDown = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsResizing(true);
+    resizeStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      w: size.width,
+      h: size.height
+    };
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const handleMouseMove = (e) => {
+      const newX = Math.max(10, Math.min(window.innerWidth - size.width, e.clientX - dragStart.current.x));
+      const newY = Math.max(10, Math.min(window.innerHeight - size.height, e.clientY - dragStart.current.y));
+      setPosition({ x: newX, y: newY });
+    };
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, size.width, size.height]);
+
+  useEffect(() => {
+    if (!isResizing) return;
+    const handleMouseMove = (e) => {
+      const deltaX = e.clientX - resizeStart.current.x;
+      const deltaY = e.clientY - resizeStart.current.y;
+      const newWidth = Math.max(300, Math.min(1000, resizeStart.current.w + deltaX));
+      const newHeight = Math.max(250, Math.min(900, resizeStart.current.h + deltaY));
+      setSize({ width: newWidth, height: newHeight });
+    };
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
+  // Resize listener to track responsive viewport category
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth > 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const renderTargetDot = (id, tx, ty, color) => {
     const active = isHighlighted(id);
     return (
       <g 
         style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-        onClick={() => onSelect(id)}
+        onClick={() => { onSelect(id); playChime('click'); }}
         onMouseEnter={() => setHoveredId(id)}
         onMouseLeave={() => setHoveredId(null)}
       >
@@ -133,344 +156,160 @@ export default function PleuraScene({
     );
   };
 
-  // Renders the high-fidelity 2D interactive vector diagram
-  const render2DDiagram = () => {
+  const renderSvgHotspot = (id, cx, cy, color) => {
+    const active = isHighlighted(id);
+    return (
+      <g
+        onClick={() => {
+          onSelect(id);
+          playChime('click');
+        }}
+        onMouseEnter={() => setHoveredId(id)}
+        onMouseLeave={() => setHoveredId(null)}
+        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+      >
+        {active && (
+          <circle
+            cx={cx}
+            cy={cy}
+            r={14}
+            fill={color}
+            opacity={0.24}
+            style={{ animation: 'pulse 1.8s infinite', transformOrigin: `${cx}px ${cy}px` }}
+          />
+        )}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={active ? 6.5 : 4}
+          fill={active ? color : '#ffffff'}
+          stroke={color}
+          strokeWidth={active ? 2 : 1.5}
+          style={{ transition: 'all 0.25s ease' }}
+        />
+      </g>
+    );
+  };
+
+  const renderSvgLabel = (id, x, y, width, height, labelText, color) => {
+    const active = isHighlighted(id);
+    const isHovered = hoveredId === id;
+    return (
+      <g
+        onClick={() => {
+          onSelect(id);
+          playChime('click');
+        }}
+        onMouseEnter={() => setHoveredId(id)}
+        onMouseLeave={() => setHoveredId(null)}
+        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+      >
+        {/* Background Card */}
+        <rect
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          rx={8}
+          fill={active ? color : isHovered ? 'rgba(240, 246, 255, 0.95)' : '#ffffff'}
+          stroke={active || isHovered ? color : '#cbd5e1'}
+          strokeWidth={active ? 2 : 1.2}
+          style={{ transition: 'all 0.2s ease' }}
+        />
+        {/* Text */}
+        <text
+          x={x + width / 2}
+          y={y + height / 2 + 4} // vertical centering adjustment
+          textAnchor="middle"
+          fill={active ? '#ffffff' : isHovered ? color : '#334155'}
+          fontSize="10px"
+          fontWeight="800"
+          style={{ transition: 'all 0.2s ease', fontFamily: 'inherit' }}
+        >
+          {labelText}
+        </text>
+      </g>
+    );
+  };
+
+  const renderSVGDiagram = () => {
     return (
       <svg
-        viewBox="0 0 340 380"
-        className="pleura-2d-svg"
-        style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }}
+        viewBox="0 0 552 863"
+        style={{ width: '100%', height: 'auto', display: 'block', userSelect: 'none', background: '#ffffff' }}
       >
         <defs>
-          {/* Shadow Filter for Zoom Lens */}
-          <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
-            <feDropShadow dx="0" dy="4" stdDeviation="5" floodOpacity="0.16" />
-          </filter>
-
-          {/* Gradients */}
-          <linearGradient id="lungGradient" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#fae8ff" />
-            <stop offset="100%" stopColor="#fbcfe8" />
-          </linearGradient>
-          <linearGradient id="diaphragmGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#f97316" />
-            <stop offset="100%" stopColor="#ea580c" />
-          </linearGradient>
-
-          {/* Magnifier Glass Clip Path */}
-          <clipPath id="magnifierClip">
-            <circle cx="130" cy="95" r="45" />
-          </clipPath>
+          <marker id="arrow-left-normal" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M 10 1.5 L 0 5 L 10 8.5 z" fill="#64748b" />
+          </marker>
+          <marker id="arrow-left-active" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M 10 1.5 L 0 5 L 10 8.5 z" fill="currentColor" />
+          </marker>
+          <marker id="arrow-right-normal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#64748b" />
+          </marker>
+          <marker id="arrow-right-active" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="currentColor" />
+          </marker>
         </defs>
 
-        {/* ================= MAIN ANATOMY BACKGROUND ================= */}
-        
-        {/* Vertebral column representation at bottom center */}
-        <rect x="158" y="280" width="24" height="40" rx="4" fill="#cbd5e1" opacity={0.6} />
-        <circle cx="170" cy="290" r="8" fill="#94a3b8" opacity={0.5} />
-        <circle cx="170" cy="315" r="8" fill="#94a3b8" opacity={0.5} />
-
-        {/* Diaphragma at the bottom */}
-        <path
-          d="M 60 300 Q 115 250 170 258 Q 225 250 280 300 L 280 315 Q 225 265 170 273 Q 115 265 60 315 Z"
-          fill="url(#diaphragmGradient)"
-          stroke="#c2410c"
-          strokeWidth={0.8}
+        {/* Background image4.jpeg */}
+        <image 
+          href="/references/image4.jpeg" 
+          x="0" 
+          y="0" 
+          width="552" 
+          height="863" 
         />
-        <text x="170" y="305" textAnchor="middle" fill="#ffffff" fontSize="9px" fontWeight="600" opacity={0.8} style={{ userSelect: 'none' }}>
-          {lang === 'id' ? 'DIAPHRAGMA' : 'DIAPHRAGM'}
-        </text>
 
-        {/* Trachea & main bronchi behind for visual reference */}
-        <path d="M 166 120 L 166 160 L 140 180 M 174 120 L 174 160 L 200 180" stroke="#cbd5e1" strokeWidth={5} fill="none" strokeLinecap="round" opacity={0.7} />
+        {/* Left Arrow (Parietalis) - Perfectly horizontal at y=60 */}
+        <line 
+          x1="130" y1="60" x2="140" y2="60" 
+          stroke={isHighlighted('pleura-parietalis') ? '#16a34a' : '#64748b'}
+          strokeWidth={isHighlighted('pleura-parietalis') ? 2.5 : 1.2}
+          markerStart={isHighlighted('pleura-parietalis') ? "url(#arrow-left-active)" : "url(#arrow-left-normal)"}
+          style={{ transition: 'all 0.2s ease', color: '#16a34a' }}
+        />
 
-        {/* Heart shadow in mediastinum */}
-        <path d="M 150 175 Q 170 165 190 175 Q 200 205 180 235 Q 165 240 150 230 Z" fill="#fda4af" opacity={0.3} />
+        {/* Left Arrow (Cavitas) - Perfectly horizontal at y=120 */}
+        <line 
+          x1="130" y1="120" x2="145" y2="120" 
+          stroke={isHighlighted('cavitas-pleuralis') ? '#22c55e' : '#64748b'}
+          strokeWidth={isHighlighted('cavitas-pleuralis') ? 2.5 : 1.2}
+          markerStart={isHighlighted('cavitas-pleuralis') ? "url(#arrow-left-active)" : "url(#arrow-left-normal)"}
+          style={{ transition: 'all 0.2s ease', color: '#22c55e' }}
+        />
 
-        {/* 1. Lungs outline (acts as base for Pleura Visceralis highlight) */}
-        {/* Right Lung (viewer's left) */}
-        <path
-          d="M 124 135 C 124 115, 88 115, 78 145 C 68 175, 62 215, 66 242 C 70 262, 114 265, 124 250 Z"
-          fill="url(#lungGradient)"
-          stroke={isHighlighted('pleura-visceralis') ? '#15803d' : '#94a3b8'}
+        {/* Right Arrow (Visceralis) - Perfectly horizontal at y=120 */}
+        <line 
+          x1="160" y1="120" x2="370" y2="120" 
+          stroke={isHighlighted('pleura-visceralis') ? '#15803d' : '#64748b'}
           strokeWidth={isHighlighted('pleura-visceralis') ? 2.5 : 1.2}
-          style={{ transition: 'all 0.2s ease', cursor: 'pointer' }}
-          onClick={() => onSelect('pleura-visceralis')}
-          onMouseEnter={() => setHoveredId('pleura-visceralis')}
-          onMouseLeave={() => setHoveredId(null)}
-        />
-        
-        {/* Left Lung (viewer's right) */}
-        <path
-          d="M 152 135 C 152 115, 188 115, 198 145 C 208 175, 214 215, 210 242 C 206 262, 162 265, 152 250 Z"
-          fill="url(#lungGradient)"
-          stroke={isHighlighted('pleura-visceralis') ? '#15803d' : '#94a3b8'}
-          strokeWidth={isHighlighted('pleura-visceralis') ? 2.5 : 1.2}
-          style={{ transition: 'all 0.2s ease', cursor: 'pointer' }}
-          onClick={() => onSelect('pleura-visceralis')}
-          onMouseEnter={() => setHoveredId('pleura-visceralis')}
-          onMouseLeave={() => setHoveredId(null)}
+          markerEnd={isHighlighted('pleura-visceralis') ? "url(#arrow-right-active)" : "url(#arrow-right-normal)"}
+          style={{ transition: 'all 0.2s ease', color: '#15803d' }}
         />
 
-        {/* 2. Pleura Parietalis outer layer line */}
-        {/* Right Lung outer border */}
-        <path
-          d="M 128 131 C 128 108, 82 108, 72 140 C 60 173, 56 220, 61 249 C 66 270, 114 274, 129 258 Z"
-          fill="none"
-          stroke={isHighlighted('pleura-parietalis') ? '#16a34a' : '#cbd5e1'}
-          strokeWidth={isHighlighted('pleura-parietalis') ? 3.0 : 1.5}
-          style={{ transition: 'all 0.2s ease', cursor: 'pointer' }}
-          onClick={() => onSelect('pleura-parietalis')}
-          onMouseEnter={() => setHoveredId('pleura-parietalis')}
-          onMouseLeave={() => setHoveredId(null)}
-        />
-        {/* Left Lung outer border */}
-        <path
-          d="M 148 131 C 148 108, 194 108, 204 140 C 216 173, 220 220, 215 249 C 210 270, 162 274, 147 258 Z"
-          fill="none"
-          stroke={isHighlighted('pleura-parietalis') ? '#16a34a' : '#cbd5e1'}
-          strokeWidth={isHighlighted('pleura-parietalis') ? 3.0 : 1.5}
-          style={{ transition: 'all 0.2s ease', cursor: 'pointer' }}
-          onClick={() => onSelect('pleura-parietalis')}
-          onMouseEnter={() => setHoveredId('pleura-parietalis')}
-          onMouseLeave={() => setHoveredId(null)}
-        />
+        {/* Hotspots */}
+        {renderSvgHotspot('pleura-parietalis', 140, 60, '#16a34a')}
+        {renderSvgHotspot('cavitas-pleuralis', 145, 120, '#22c55e')}
+        {renderSvgHotspot('pleura-visceralis', 160, 120, '#15803d')}
 
-        {/* 3. Cavitas Pleuralis (the space in between) interactive overlay */}
-        {/* Right pleural cavity */}
-        <path
-          d="M 128 131 C 128 108, 82 108, 72 140 C 60 173, 56 220, 61 249 C 66 270, 114 274, 129 258 Z
-             L 124 250 C 114 265, 70 262, 66 242 C 62 215, 68 175, 78 145 C 88 115, 124 115, 124 135 Z"
-          fill={isHighlighted('cavitas-pleuralis') ? 'rgba(34, 197, 94, 0.28)' : 'rgba(34, 197, 94, 0.08)'}
-          style={{ transition: 'all 0.2s ease', cursor: 'pointer' }}
-          onClick={() => onSelect('cavitas-pleuralis')}
-          onMouseEnter={() => setHoveredId('cavitas-pleuralis')}
-          onMouseLeave={() => setHoveredId(null)}
-        />
-        {/* Left pleural cavity */}
-        <path
-          d="M 148 131 C 148 108, 194 108, 204 140 C 216 173, 220 220, 215 249 C 210 270, 162 274, 147 258 Z
-             L 152 250 C 162 265, 206 262, 210 242 C 214 215, 208 175, 198 145 C 188 115, 152 115, 152 135 Z"
-          fill={isHighlighted('cavitas-pleuralis') ? 'rgba(34, 197, 94, 0.28)' : 'rgba(34, 197, 94, 0.08)'}
-          style={{ transition: 'all 0.2s ease', cursor: 'pointer' }}
-          onClick={() => onSelect('cavitas-pleuralis')}
-          onMouseEnter={() => setHoveredId('cavitas-pleuralis')}
-          onMouseLeave={() => setHoveredId(null)}
-        />
-
-
-        {/* ================= MAGNIFIER ZOOM GLASS CALLOUT ================= */}
-        
-        {/* 1. Zoom Target ring on the right lung's outer chest border */}
-        <circle
-          cx="65"
-          cy="200"
-          r="8"
-          fill="none"
-          stroke="#0284c7"
-          strokeWidth={1.5}
-          strokeDasharray="2,2"
-        />
-
-        {/* 2. Projection Lines (magnifying cone) from target to bubble */}
-        <line
-          x1="58"
-          y1="195"
-          x2="85"
-          y2="95"
-          stroke="#0284c7"
-          strokeWidth={0.8}
-          opacity={0.6}
-        />
-        <line
-          x1="73"
-          y1="200"
-          x2="130"
-          y2="140"
-          stroke="#0284c7"
-          strokeWidth={0.8}
-          opacity={0.6}
-        />
-
-        {/* 3. Magnified View Container (with ClipPath applied) */}
-        <g clipPath="url(#magnifierClip)">
-          <rect x="80" y="45" width="100" height="100" fill="#ffffff" />
-          
-          {/* Rib cage / Chest wall blocks on the left of magnifier */}
-          <path d="M 80 50 C 95 50, 95 62, 80 65" fill="#e6dfd5" stroke="#94a3b8" strokeWidth={0.8} />
-          <path d="M 80 75 C 95 75, 95 87, 80 90" fill="#e6dfd5" stroke="#94a3b8" strokeWidth={0.8} />
-          <path d="M 80 100 C 95 100, 95 112, 80 115" fill="#e6dfd5" stroke="#94a3b8" strokeWidth={0.8} />
-          <path d="M 80 125 C 95 125, 95 137, 80 140" fill="#e6dfd5" stroke="#94a3b8" strokeWidth={0.8} />
-          <rect x="80" y="45" width="15" height="100" fill="#fda4af" opacity={0.4} /> {/* Intercostal muscle */}
-
-          {/* Pleura Parietalis (thick outer layer) */}
-          <path
-            d="M 100 45 Q 102 95 100 145"
-            fill="none"
-            stroke={isHighlighted('pleura-parietalis') ? '#16a34a' : '#94a3b8'}
-            strokeWidth={isHighlighted('pleura-parietalis') ? 6.5 : 3.0}
-            style={{ transition: 'all 0.2s ease', cursor: 'pointer' }}
-            onClick={() => onSelect('pleura-parietalis')}
-            onMouseEnter={() => setHoveredId('pleura-parietalis')}
-            onMouseLeave={() => setHoveredId(null)}
-          />
-
-          {/* Cavitas Pleuralis (middle fluid layer) */}
-          <path
-            d="M 100 45 Q 102 95 100 145 L 120 145 Q 122 95 120 45 Z"
-            fill={isHighlighted('cavitas-pleuralis') ? 'rgba(34, 197, 94, 0.42)' : 'rgba(34, 197, 94, 0.15)'}
-            style={{ transition: 'all 0.2s ease', cursor: 'pointer' }}
-            onClick={() => onSelect('cavitas-pleuralis')}
-            onMouseEnter={() => setHoveredId('cavitas-pleuralis')}
-            onMouseLeave={() => setHoveredId(null)}
-          />
-
-          {/* Pleura Visceralis (thick inner layer) */}
-          <path
-            d="M 120 45 Q 122 95 120 145"
-            fill="none"
-            stroke={isHighlighted('pleura-visceralis') ? '#15803d' : '#94a3b8'}
-            strokeWidth={isHighlighted('pleura-visceralis') ? 6.5 : 3.0}
-            style={{ transition: 'all 0.2s ease', cursor: 'pointer' }}
-            onClick={() => onSelect('pleura-visceralis')}
-            onMouseEnter={() => setHoveredId('pleura-visceralis')}
-            onMouseLeave={() => setHoveredId(null)}
-          />
-
-          {/* Lungs Tissue on the right side of magnifier */}
-          <path
-            d="M 120 45 Q 122 95 120 145 L 180 145 L 180 45 Z"
-            fill="url(#lungGradient)"
-            opacity={0.85}
-          />
-          {/* Subtle alveoli circles in lung tissue */}
-          <circle cx="138" cy="65" r="3" fill="#fda4af" opacity={0.5} />
-          <circle cx="150" cy="80" r="4" fill="#fda4af" opacity={0.5} />
-          <circle cx="135" cy="100" r="3" fill="#fda4af" opacity={0.5} />
-          <circle cx="148" cy="115" r="4" fill="#fda4af" opacity={0.5} />
-        </g>
-
-        {/* 4. Magnifier Frame border (glass style) */}
-        <circle
-          cx="130"
-          cy="95"
-          r="45"
-          fill="none"
-          stroke="#0284c7"
-          strokeWidth={3}
-          style={{ filter: 'url(#shadow)' }}
-        />
-
-
-        {/* ================= DIAGRAM LABELS AND LEADERS ================= */}
-        
-        {/* Label 1: Pleura Parietalis */}
-        <g
-          style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-          onClick={() => onSelect('pleura-parietalis')}
-          onMouseEnter={() => setHoveredId('pleura-parietalis')}
-          onMouseLeave={() => setHoveredId(null)}
-        >
-          {/* Leader line arrow */}
-          <path
-            d="M 72 38 L 94 38 L 99 65"
-            fill="none"
-            stroke={isHighlighted('pleura-parietalis') ? '#16a34a' : '#475569'}
-            strokeWidth={isHighlighted('pleura-parietalis') ? 1.8 : 1.0}
-            style={{ transition: 'all 0.2s ease' }}
-          />
-          <polygon
-            points="99,65 96,59 102,60"
-            fill={isHighlighted('pleura-parietalis') ? '#16a34a' : '#475569'}
-          />
-          <rect x="5" y="27" width="90" height="18" rx="4" fill={activeId === 'pleura-parietalis' ? '#16a34a' : 'transparent'} style={{ transition: 'all 0.2s ease' }} />
-          <text
-            x="10"
-            y="39"
-            fill={activeId === 'pleura-parietalis' ? '#ffffff' : isHighlighted('pleura-parietalis') ? '#16a34a' : '#334155'}
-            fontSize="9px"
-            fontWeight="700"
-            style={{ transition: 'all 0.2s ease', fontFamily: 'inherit' }}
-          >
-            Pleura Parietalis
-          </text>
-        </g>
-
-        {/* Label 2: Cavitas Pleuralis */}
-        <g
-          style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-          onClick={() => onSelect('cavitas-pleuralis')}
-          onMouseEnter={() => setHoveredId('cavitas-pleuralis')}
-          onMouseLeave={() => setHoveredId(null)}
-        >
-          {/* Leader line arrow */}
-          <path
-            d="M 72 88 L 100 88 Q 106 88 109 90"
-            fill="none"
-            stroke={isHighlighted('cavitas-pleuralis') ? '#22c55e' : '#475569'}
-            strokeWidth={isHighlighted('cavitas-pleuralis') ? 1.8 : 1.0}
-            style={{ transition: 'all 0.2s ease' }}
-          />
-          <polygon
-            points="109,90 103,87 106,93"
-            fill={isHighlighted('cavitas-pleuralis') ? '#22c55e' : '#475569'}
-          />
-          <rect x="5" y="77" width="90" height="18" rx="4" fill={activeId === 'cavitas-pleuralis' ? '#22c55e' : 'transparent'} style={{ transition: 'all 0.2s ease' }} />
-          <text
-            x="10"
-            y="89"
-            fill={activeId === 'cavitas-pleuralis' ? '#ffffff' : isHighlighted('cavitas-pleuralis') ? '#22c55e' : '#334155'}
-            fontSize="9px"
-            fontWeight="700"
-            style={{ transition: 'all 0.2s ease', fontFamily: 'inherit' }}
-          >
-            Cavitas Pleuralis
-          </text>
-        </g>
-
-        {/* Label 3: Pleura Visceralis */}
-        <g
-          style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-          onClick={() => onSelect('pleura-visceralis')}
-          onMouseEnter={() => setHoveredId('pleura-visceralis')}
-          onMouseLeave={() => setHoveredId(null)}
-        >
-          {/* Leader line arrow */}
-          <path
-            d="M 205 92 L 180 92 L 122 92"
-            fill="none"
-            stroke={isHighlighted('pleura-visceralis') ? '#15803d' : '#475569'}
-            strokeWidth={isHighlighted('pleura-visceralis') ? 1.8 : 1.0}
-            style={{ transition: 'all 0.2s ease' }}
-          />
-          <polygon
-            points="122,92 128,95 128,89"
-            fill={isHighlighted('pleura-visceralis') ? '#15803d' : '#475569'}
-          />
-          <rect x="200" y="81" width="90" height="18" rx="4" fill={activeId === 'pleura-visceralis' ? '#15803d' : 'transparent'} style={{ transition: 'all 0.2s ease' }} />
-          <text
-            x="205"
-            y="93"
-            fill={activeId === 'pleura-visceralis' ? '#ffffff' : isHighlighted('pleura-visceralis') ? '#15803d' : '#334155'}
-            fontSize="9px"
-            fontWeight="700"
-            style={{ transition: 'all 0.2s ease', fontFamily: 'inherit' }}
-          >
-            Pleura Visceralis
-          </text>
-        </g>
+        {/* Interactive Label Cards (positioned exactly on top of pre-printed texts) */}
+        {renderSvgLabel('pleura-parietalis', 10, 42, 120, 36, lang === 'id' ? 'Pleura Parietalis' : 'Parietal Pleura', '#16a34a')}
+        {renderSvgLabel('cavitas-pleuralis', 10, 102, 120, 36, lang === 'id' ? 'Cavitas Pleuralis' : 'Pleural Cavity', '#22c55e')}
+        {renderSvgLabel('pleura-visceralis', 370, 102, 120, 36, lang === 'id' ? 'Pleura Visceralis' : 'Visceral Pleura', '#15803d')}
       </svg>
     );
   };
 
   return (
-    <div className="segment-scene-container" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+    <div className="segment-scene-container" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: '#ffffff', position: 'relative' }}>
       
       {/* Mobile Tab Selector (Visible only on screens <= 1024px) */}
       <div className="trachea-tab-selector" style={{ background: '#ffffff', borderBottom: '1px solid #cbd5e1', padding: '6px' }}>
         <button 
           className={`trachea-tab-btn ${activeTab === 'diagram' ? 'active' : ''}`}
-          onClick={() => setActiveTab('diagram')}
+          onClick={() => { setActiveTab('diagram'); playChime('click'); }}
           style={{
             flex: 1,
             padding: '8px',
@@ -480,6 +319,8 @@ export default function PleuraScene({
             textAlign: 'center',
             background: activeTab === 'diagram' ? '#f0f6ff' : 'transparent',
             color: activeTab === 'diagram' ? '#0284c7' : '#64748b',
+            border: 'none',
+            cursor: 'pointer'
           }}
         >
           <BookOpen size={14} style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '6px' }} />
@@ -487,7 +328,7 @@ export default function PleuraScene({
         </button>
         <button 
           className={`trachea-tab-btn ${activeTab === 'canvas' ? 'active' : ''}`}
-          onClick={() => setActiveTab('canvas')}
+          onClick={() => { setActiveTab('canvas'); playChime('click'); }}
           style={{
             flex: 1,
             padding: '8px',
@@ -497,244 +338,314 @@ export default function PleuraScene({
             textAlign: 'center',
             background: activeTab === 'canvas' ? '#f0f6ff' : 'transparent',
             color: activeTab === 'canvas' ? '#0284c7' : '#64748b',
+            border: 'none',
+            cursor: 'pointer'
           }}
         >
-          <Rotate3D size={14} style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '6px' }} />
-          <span>3D Model</span>
+          <BookOpen size={14} style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '6px' }} />
+          <span>{lang === 'id' ? 'Visualisasi Utama' : 'Main View'}</span>
         </button>
       </div>
 
-      {/* Split-Screen Layout Grid Container */}
-      <div className="trachea-split-container" style={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
+      {/* Main Split-Screen Layout Container */}
+      <div className="trachea-split-container" style={{ display: 'flex', flexGrow: 1, overflow: 'hidden', position: 'relative', width: '100%', height: '100%' }}>
         
-        {/* LEFT COLUMN: INTERACTIVE DIAGRAM */}
-        <div 
-          className={`trachea-diagram-pane ${activeTab === 'diagram' ? 'mobile-visible' : 'mobile-hidden'}`}
-          style={{
-            width: '35%',
-            height: '100%',
-            background: '#ffffff',
-            borderRight: '1px solid #cbd5e1',
-            padding: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflowY: 'auto'
-          }}
-        >
-          <div style={{ width: '100%', maxWidth: '340px' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '800', color: '#0f172a', textAlign: 'center', letterSpacing: '-0.3px' }}>
+        {/* Mobile Diagram View (only visible on mobile when tab is 'diagram') */}
+        {!isDesktop && activeTab === 'diagram' && (
+          <div style={{ width: '100%', height: '100%', overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: '800', color: '#1e293b', textAlign: 'center' }}>
               {lang === 'id' ? 'DIAGRAM INTERAKTIF PLEURA & CAVITAS' : 'INTERACTIVE PLEURA & CAVITY DIAGRAM'}
-            </h3>
-            {render2DDiagram()}
-            <p style={{ margin: '14px 0 0 0', fontSize: '11px', color: '#64748b', textAlign: 'center', lineHeight: '1.4' }}>
+            </h4>
+            <div style={{ width: '100%', maxWidth: '340px' }}>
+              {renderSVGDiagram()}
+            </div>
+            <p style={{ margin: '14px 0 0 0', fontSize: '10px', color: '#64748b', textAlign: 'center', lineHeight: '1.4' }}>
               {lang === 'id' 
                 ? 'Klik/ketuk nama label di atas atau area diagram untuk menyorot bagian tersebut.' 
                 : 'Click/tap the labels above or the diagram regions to select and view description.'}
             </p>
           </div>
-        </div>
+        )}
 
-        {/* RIGHT COLUMN: 3D CANVAS VIEWER */}
-        <div 
-          className={`trachea-3d-pane ${activeTab === 'canvas' ? 'mobile-visible' : 'mobile-hidden'}`}
-          style={{
-            width: '65%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: '#ffffff',
-            position: 'relative'
-          }}
-        >
-          {/* Reset Camera Rotation Button (Placed below top toolbar on desktop) */}
-          <button 
-            className="floating-camera-reset-btn"
-            onClick={handleResetRotation}
-            title={lang === 'id' ? 'Kembali ke Rotasi Awal' : 'Reset View Rotation'}
+        {/* 3D Model Pane (Desktop occupies 100%, Mobile occupies 100% when activeTab is 'canvas') */}
+        {(isDesktop || activeTab === 'canvas') && (
+          <div 
+            className="trachea-3d-pane"
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#ffffff',
+              position: 'relative'
+            }}
           >
-            <RefreshCw size={13} />
-            <span>{lang === 'id' ? 'Rotasi Awal' : 'Reset View'}</span>
-          </button>
-
-          {/* Inner container forced to 4:3 aspect ratio to guarantee perfect alignment of overlay and Canvas */}
-          <div style={{
-            position: 'relative',
-            height: '100%',
-            width: 'auto',
-            maxWidth: '100%',
-            aspectRatio: '4 / 3',
-            background: '#eaeff5',
-            borderRadius: '12px',
-            overflow: 'hidden'
-          }}>
-
-            {/* Three.js Canvas */}
-            <div style={{ width: '100%', height: '100%' }}>
-              <Canvas
-                camera={{ position: [0, 0.58, 2.95], fov: 32 }}
-                shadows
-                dpr={[1, 2]}
-                gl={{ antialias: true, alpha: true }}
+            {/* Toggle 2D Diagram Button (Desktop only) */}
+            {isDesktop && (
+              <button 
+                className="floating-camera-reset-btn"
+                style={{ left: '16px' }}
+                onClick={() => { setIsDiagramOpen(!isDiagramOpen); playChime('click'); }}
+                title={isDiagramOpen ? (lang === 'id' ? 'Sembunyikan Diagram 2D' : 'Hide 2D Diagram') : (lang === 'id' ? 'Tampilkan Diagram 2D' : 'Show 2D Diagram')}
               >
-                <ambientLight intensity={0.8} />
-                <directionalLight position={[2.8, 3.5, 2.4]} intensity={2.2} castShadow />
-                <pointLight position={[-2, 1.4, 2.2]} intensity={1.0} color="#cce6ff" />
-                
-                <Suspense fallback={<Loader />}>
-                  <group scale={7.2} position={[0, -1.03, 0]} rotation={[0.02, 0, 0]}>
-                    <LungsModel 
-                      activePart={activePart}
-                      breathingRate={breathingRate}
-                      onSurfaceClick={(meshName) => {
-                        // Click on the 3D surface selects the current highlighted part or defaults to visceral pleura
-                        if (activeId === 'pleura-visceralis') {
-                          onSelect('pleura-parietalis');
-                        } else if (activeId === 'pleura-parietalis') {
-                          onSelect('cavitas-pleuralis');
-                        } else {
-                          onSelect('pleura-visceralis');
-                        }
-                      }}
-                    />
-                  </group>
-                  <Environment preset="city" />
-                  <ContactShadows position={[0, -1.43, 0]} opacity={0.16} scale={4.2} blur={2.2} far={2} />
-                </Suspense>
-
-                <OrbitControls
-                  ref={controlsRef}
-                  makeDefault
-                  enableDamping
-                  dampingFactor={0.08}
-                  minDistance={1.2}
-                  maxDistance={5.0}
-                  target={[0, 0.12, 0]}
-                />
-              </Canvas>
-            </div>
-
-            {/* Transparent SVG Overlay (Lines and Labels) */}
-            {showLabels && (
-              <svg 
-                viewBox="0 0 800 600" 
-                preserveAspectRatio="xMidYMid meet"
-                className="trachea-svg-overlay"
-              >
-                <defs>
-                  {/* Arrow markers for each part */}
-                  <marker id="arrow-normal" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                    <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#94a3b8" />
-                  </marker>
-                  <marker id="arrow-pleura-parietalis" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                    <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#16a34a" />
-                  </marker>
-                  <marker id="arrow-cavitas-pleuralis" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                    <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#22c55e" />
-                  </marker>
-                  <marker id="arrow-pleura-visceralis" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                    <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#15803d" />
-                  </marker>
-                </defs>
-
-                {/* ================= LEADER LINES & TARGET PIN DOTS ================= */}
-                
-                {/* 1. Pleura Parietalis (Green) */}
-                <path 
-                  d="M 250 250 L 260 250 L 280 310" 
-                  {...getLineStyle('pleura-parietalis', '#16a34a')}
-                  markerEnd={isHighlighted('pleura-parietalis') ? 'url(#arrow-pleura-parietalis)' : 'url(#arrow-normal)'}
-                />
-                {renderTargetDot('pleura-parietalis', 280, 310, '#16a34a')}
-
-                {/* 2. Cavitas Pleuralis (Light Green) */}
-                <path 
-                  d="M 250 330 L 270 330 L 295 360" 
-                  {...getLineStyle('cavitas-pleuralis', '#22c55e')}
-                  markerEnd={isHighlighted('cavitas-pleuralis') ? 'url(#arrow-cavitas-pleuralis)' : 'url(#arrow-normal)'}
-                />
-                {renderTargetDot('cavitas-pleuralis', 295, 360, '#22c55e')}
-
-                {/* 3. Pleura Visceralis (Dark Green) */}
-                <path 
-                  d="M 550 280 L 510 280 L 480 320" 
-                  {...getLineStyle('pleura-visceralis', '#15803d')} 
-                  markerEnd={isHighlighted('pleura-visceralis') ? 'url(#arrow-pleura-visceralis)' : 'url(#arrow-normal)'}
-                />
-                {renderTargetDot('pleura-visceralis', 480, 320, '#15803d')}
-
-
-                {/* ================= INTERACTIVE LABELS ================= */}
-                {partsList.map((part) => {
-                  const isActive = activeId === part.id;
-                  const isHovered = hoveredId === part.id;
-                  
-                  return (
-                    <g
-                      key={part.id}
-                      onClick={() => onSelect(part.id)}
-                      onMouseEnter={() => setHoveredId(part.id)}
-                      onMouseLeave={() => setHoveredId(null)}
-                      style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-                    >
-                      <rect
-                        x={part.x}
-                        y={part.y - 18}
-                        width={190}
-                        height={36}
-                        rx={8}
-                        fill={isActive ? part.color : isHovered ? 'rgba(240, 246, 255, 0.95)' : 'rgba(255, 255, 255, 0.85)'}
-                        stroke={isActive || isHovered ? part.color : '#cbd5e1'}
-                        strokeWidth={isActive ? 2 : 1.2}
-                        style={{ transition: 'all 0.2s ease' }}
-                      />
-                      <text
-                        x={part.x + 95}
-                        y={part.y + 4}
-                        textAnchor="middle"
-                        fill={isActive ? '#ffffff' : isHovered ? part.color : '#334155'}
-                        fontSize="10.5px"
-                        fontWeight="700"
-                        style={{ transition: 'all 0.2s ease', userSelect: 'none', fontFamily: 'inherit' }}
-                      >
-                        {part.name[lang] || part.name.id}
-                      </text>
-                    </g>
-                  );
-                })}
-              </svg>
+                <BookOpen size={13} />
+                <span>{isDiagramOpen ? (lang === 'id' ? 'Sembunyikan Diagram' : 'Hide Diagram') : (lang === 'id' ? 'Tampilkan Diagram' : 'Show Diagram')}</span>
+              </button>
             )}
 
-            {/* Mode label watermark */}
-            <div 
-              style={{ 
-                position: 'absolute', 
-                left: '16px', 
-                bottom: '16px', 
-                background: 'rgba(255, 255, 255, 0.85)', 
-                backdropFilter: 'blur(8px)',
-                border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                padding: '6px 12px',
-                fontSize: '10.5px',
-                fontWeight: '700',
-                color: '#475569',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                pointerEvents: 'none',
-                zIndex: 5
-              }}
-            >
-              <Rotate3D size={13} />
-              <span>
-                {lang === 'id' ? 'Lokal: Pleura & Rongga Paru 3D' : 'Local: 3D Pleura & Lungs Anatomy'}
-              </span>
+            {/* Centered Image Container with 4:3 wrapper */}
+            <div style={{
+              position: 'relative',
+              height: '100%',
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#eaeff5',
+              borderRadius: '12px',
+              overflow: 'hidden'
+            }}>
+              <div 
+                onClick={(e) => {
+                  if (e.target.tagName === 'IMG' || e.target.tagName === 'svg') {
+                    playChime('click');
+                    if (activeId === 'pleura-visceralis') {
+                      onSelect('pleura-parietalis');
+                    } else if (activeId === 'pleura-parietalis') {
+                      onSelect('cavitas-pleuralis');
+                    } else {
+                      onSelect('pleura-visceralis');
+                    }
+                  }
+                }}
+                style={{
+                  position: 'relative',
+                  height: '100%',
+                  aspectRatio: '552 / 863',
+                  background: '#ffffff',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                  cursor: 'pointer'
+                }}
+              >
+                <img 
+                  src="/references/image4.jpeg" 
+                  alt="Pleura Diagram"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'block',
+                    pointerEvents: 'none',
+                    userSelect: 'none'
+                  }}
+                />
+
+                {/* SVG Overlay for interactive targets and labels in main view */}
+                {showLabels && (
+                  <svg 
+                    viewBox="0 0 552 863" 
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      pointerEvents: 'none',
+                      zIndex: 10
+                    }}
+                  >
+                    <defs>
+                      <marker id="arrow-main-left-normal" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                        <path d="M 10 1.5 L 0 5 L 10 8.5 z" fill="#64748b" />
+                      </marker>
+                      <marker id="arrow-main-left-active" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                        <path d="M 10 1.5 L 0 5 L 10 8.5 z" fill="currentColor" />
+                      </marker>
+                      <marker id="arrow-main-right-normal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+                        <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#64748b" />
+                      </marker>
+                      <marker id="arrow-main-right-active" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+                        <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="currentColor" />
+                      </marker>
+                    </defs>
+
+                    {/* Left Arrow (Parietalis) - Perfectly horizontal at y=60 */}
+                    <line 
+                      x1="130" y1="60" x2="140" y2="60" 
+                      stroke={isHighlighted('pleura-parietalis') ? '#16a34a' : '#64748b'}
+                      strokeWidth={isHighlighted('pleura-parietalis') ? 2.5 : 1.2}
+                      markerStart={isHighlighted('pleura-parietalis') ? "url(#arrow-main-left-active)" : "url(#arrow-main-left-normal)"}
+                      style={{ transition: 'all 0.2s ease', color: '#16a34a' }}
+                    />
+
+                    {/* Left Arrow (Cavitas) - Perfectly horizontal at y=120 */}
+                    <line 
+                      x1="130" y1="120" x2="145" y2="120" 
+                      stroke={isHighlighted('cavitas-pleuralis') ? '#22c55e' : '#64748b'}
+                      strokeWidth={isHighlighted('cavitas-pleuralis') ? 2.5 : 1.2}
+                      markerStart={isHighlighted('cavitas-pleuralis') ? "url(#arrow-main-left-active)" : "url(#arrow-main-left-normal)"}
+                      style={{ transition: 'all 0.2s ease', color: '#22c55e' }}
+                    />
+
+                    {/* Right Arrow (Visceralis) - Perfectly horizontal at y=120 */}
+                    <line 
+                      x1="160" y1="120" x2="370" y2="120" 
+                      stroke={isHighlighted('pleura-visceralis') ? '#15803d' : '#64748b'}
+                      strokeWidth={isHighlighted('pleura-visceralis') ? 2.5 : 1.2}
+                      markerEnd={isHighlighted('pleura-visceralis') ? "url(#arrow-main-right-active)" : "url(#arrow-main-right-normal)"}
+                      style={{ transition: 'all 0.2s ease', color: '#15803d' }}
+                    />
+
+                    {/* Hotspots */}
+                    {renderSvgHotspot('pleura-parietalis', 140, 60, '#16a34a')}
+                    {renderSvgHotspot('cavitas-pleuralis', 145, 120, '#22c55e')}
+                    {renderSvgHotspot('pleura-visceralis', 160, 120, '#15803d')}
+
+                    {/* Interactive Label Cards (positioned exactly on top of pre-printed texts) */}
+                    {renderSvgLabel('pleura-parietalis', 10, 42, 120, 36, lang === 'id' ? 'Pleura Parietalis' : 'Parietal Pleura', '#16a34a')}
+                    {renderSvgLabel('cavitas-pleuralis', 10, 102, 120, 36, lang === 'id' ? 'Cavitas Pleuralis' : 'Pleural Cavity', '#22c55e')}
+                    {renderSvgLabel('pleura-visceralis', 370, 102, 120, 36, lang === 'id' ? 'Pleura Visceralis' : 'Visceral Pleura', '#15803d')}
+                  </svg>
+                )}
+              </div>
+
+              {/* Mode label watermark */}
+              <div 
+                style={{ 
+                  position: 'absolute', 
+                  left: '16px', 
+                  bottom: '16px', 
+                  background: 'rgba(255, 255, 255, 0.85)', 
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  fontSize: '10.5px',
+                  fontWeight: '700',
+                  color: '#475569',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  pointerEvents: 'none',
+                  zIndex: 5
+                }}
+              >
+                <BookOpen size={13} />
+                <span>
+                  {lang === 'id' ? 'Lokal: Diagram Pleura & Rongga Paru' : 'Local: Pleura & Pleural Cavity Diagram'}
+                </span>
+              </div>
+
+              {/* Floating Fullscreen Toggle Button in bottom right */}
+              <button 
+                className="floating-fullscreen-btn"
+                onClick={() => { setIsFullscreen(); playChime('click'); }}
+                title={isFullscreen ? (lang === 'id' ? 'Keluar Layar Penuh' : 'Exit Fullscreen') : (lang === 'id' ? 'Layar Penuh' : 'Fullscreen')}
+                style={{ bottom: '16px', right: '16px' }}
+              >
+                {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+              </button>
             </div>
 
+            {/* Floating resizable & draggable 2D Diagram Panel (Desktop only) */}
+            {isDesktop && isDiagramOpen && (
+              <div 
+                style={{
+                  position: 'absolute',
+                  left: `${position.x}px`,
+                  top: `${position.y}px`,
+                  zIndex: 100,
+                  background: '#ffffff',
+                  border: '1.5px solid #cbd5e1',
+                  borderRadius: '16px',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  cursor: isDragging ? 'grabbing' : 'default',
+                  userSelect: 'none',
+                  overflow: 'hidden',
+                  minWidth: '280px',
+                  minHeight: '250px',
+                  width: `${size.width}px`,
+                  height: `${size.height}px`
+                }}
+              >
+                {/* Drag Handle Header */}
+                <div 
+                  onMouseDown={handleMouseDown}
+                  style={{
+                    padding: '10px 14px',
+                    background: '#f8fafc',
+                    borderBottom: '1px solid #e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'grab',
+                    fontWeight: 'bold',
+                    fontSize: '11px',
+                    color: '#475569'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <BookOpen size={14} color="#0284c7" />
+                    <span>{lang === 'id' ? 'Diagram 2D Pleura' : '2D Pleura Diagram'}</span>
+                  </div>
+                  <button 
+                    onClick={() => { setIsDiagramOpen(false); playChime('click'); }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#94a3b8',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      padding: '2px',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* diagram wrapper */}
+                <div style={{ padding: '12px', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto' }}>
+                  <div>
+                    <h4 style={{ margin: '0 0 6px 0', fontSize: '9.5px', fontWeight: '800', color: '#1e293b', textAlign: 'center' }}>
+                      {lang === 'id' ? 'DIAGRAM INTERAKTIF PLEURA & CAVITAS' : 'INTERACTIVE PLEURA & CAVITY DIAGRAM'}
+                    </h4>
+                    <div style={{ position: 'relative', width: '100%' }}>
+                      {renderSVGDiagram()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Resize Handle */}
+                <div 
+                  onMouseDown={handleResizeMouseDown}
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    bottom: 0,
+                    width: '18px',
+                    height: '18px',
+                    cursor: 'se-resize',
+                    zIndex: 110,
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    justifyContent: 'flex-end',
+                    padding: '2px',
+                    pointerEvents: 'auto'
+                  }}
+                  title={lang === 'id' ? 'Tarik untuk mengubah ukuran' : 'Drag to resize'}
+                >
+                  <svg width="10" height="10" viewBox="0 0 10 10" style={{ pointerEvents: 'none' }}>
+                    <path d="M10,0 L0,10 M10,4 L4,10 M10,8 L8,10" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </div>
+              </div>
+            )}
+
           </div>
-        </div>
+        )}
 
       </div>
 

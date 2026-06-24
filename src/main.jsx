@@ -991,8 +991,8 @@ function App() {
                 />
               )}
               
-              {/* Breathing Simulation Controller Panel (Only visible for segments other than Trachea, Arbor Bronchialis, and Pulmo) */}
-              {activeSegment !== 'Trachea' && activeSegment !== 'Arbor Bronchialis' && activeSegment !== 'Pulmo' && (
+              {/* Breathing Simulation Controller Panel (Only visible for segments other than Trachea, Arbor Bronchialis, Pulmo, and Pleura) */}
+              {activeSegment !== 'Trachea' && activeSegment !== 'Arbor Bronchialis' && activeSegment !== 'Pulmo' && activeSegment !== 'Pleura & Cavitas Pleuralis' && (
                 <div className="breathing-rate-controller glass-panel">
                   <span className="controller-title">{t.simulatorTitle}</span>
                   <div className="rate-selector-grid">

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Rotate3D, BookOpen, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
+import { Rotate3D, BookOpen, Maximize2, Minimize2, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { partData } from '../data/partData';
+import { playChime } from '../utils/audioSpeech';
 
 export default function TracheaSketchfabScene({ 
   activeId, 
@@ -21,53 +22,164 @@ export default function TracheaSketchfabScene({
   const [annotationsList, setAnnotationsList] = useState([]);
   const [apiLoading, setApiLoading] = useState(true);
 
+  // States for collapsible/floating 2D diagram card (matches PulmoScene.jsx format)
+  const [isDiagramCollapsed, setIsDiagramCollapsed] = useState(false);
+  const [isDiagramOpen, setIsDiagramOpen] = useState(true);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
+  const [position, setPosition] = useState({ x: 20, y: 130 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const [size, setSize] = useState({ width: 380, height: 460 });
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0 });
+  
+  const isProgrammaticSelection = useRef(false);
+  const activeIdRef = useRef(activeId);
+
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
+
+  const handleMouseDown = (e) => {
+    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+    setIsDragging(true);
+    dragStart.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    };
+  };
+
+  const handleResizeMouseDown = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsResizing(true);
+    resizeStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      w: size.width,
+      h: size.height
+    };
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const handleMouseMove = (e) => {
+      const newX = Math.max(10, Math.min(window.innerWidth - size.width, e.clientX - dragStart.current.x));
+      const newY = Math.max(10, Math.min(window.innerHeight - size.height, e.clientY - dragStart.current.y));
+      setPosition({ x: newX, y: newY });
+    };
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, size.width, size.height]);
+
+  useEffect(() => {
+    if (!isResizing) return;
+    const handleMouseMove = (e) => {
+      const deltaX = e.clientX - resizeStart.current.x;
+      const deltaY = e.clientY - resizeStart.current.y;
+      const newWidth = Math.max(300, Math.min(1000, resizeStart.current.w + deltaX));
+      const newHeight = Math.max(250, Math.min(900, resizeStart.current.h + deltaY));
+      setSize({ width: newWidth, height: newHeight });
+    };
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
+  // Resize listener to track responsive viewport category
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth > 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Filter parts specifically for the Trachea segment
   const tracheaParts = useMemo(() => {
     return partData.filter(p => p.layer.id === 'Trachea');
   }, []);
 
-  // Concept definitions for Trachea segment with overlay coordinates for the 3D model
-  const partsList = [
+  // Concept definitions for Trachea segment on the 3D model SVG overlay
+  const partsList3D = [
     {
       id: 'kartilago-trakea',
       color: '#0d9488', // Teal
       name: { id: 'Cartilagines Tracheales', en: 'Tracheal Cartilages' },
       x: 40,
-      y: 182
+      y: 150
     },
     {
       id: 'ligamenta-annularia',
       color: '#10b981', // Green
       name: { id: 'Ligamenta Annularia', en: 'Annular Ligaments' },
       x: 40,
-      y: 302
+      y: 210
     },
     {
       id: 'trachea-pars-cervicalis',
       color: '#0284c7', // Blue
       name: { id: 'Trachea, Pars Cervicalis', en: 'Cervical Trachea' },
       x: 570,
-      y: 142
+      y: 120
     },
     {
       id: 'trachea-pars-thoracica',
       color: '#0369a1', // Dark Blue
       name: { id: 'Trachea, Pars Thoracica', en: 'Thoracic Trachea' },
       x: 570,
-      y: 282
+      y: 270
     },
     {
       id: 'karina',
       color: '#d97706', // Amber
       name: { id: 'Bifurcatio Trachea', en: 'Tracheal Bifurcation' },
       x: 570,
-      y: 387
+      y: 390
     }
   ];
 
-  // Cartilage rings vertical offsets for 2D diagram
-  const cervicalRings = [60, 80, 100, 120];
-  const thoracicRings = [148, 168, 188, 208, 228, 248];
+  // Concept definitions for Trachea segment (for name matching)
+  const partsList = [
+    {
+      id: 'kartilago-trakea',
+      color: '#0d9488', // Teal
+      name: { id: 'Cartilagines Tracheales', en: 'Tracheal Cartilages' }
+    },
+    {
+      id: 'ligamenta-annularia',
+      color: '#10b981', // Green
+      name: { id: 'Ligamenta Annularia', en: 'Annular Ligaments' }
+    },
+    {
+      id: 'trachea-pars-cervicalis',
+      color: '#0284c7', // Blue
+      name: { id: 'Trachea, Pars Cervicalis', en: 'Cervical Trachea' }
+    },
+    {
+      id: 'trachea-pars-thoracica',
+      color: '#0369a1', // Dark Blue
+      name: { id: 'Trachea, Pars Thoracica', en: 'Thoracic Trachea' }
+    },
+    {
+      id: 'karina',
+      color: '#d97706', // Amber
+      name: { id: 'Bifurcatio Trachea', en: 'Tracheal Bifurcation' }
+    }
+  ];
 
   const matchAnnotationToPart = (annotationName) => {
     const name = annotationName.toLowerCase();
@@ -104,6 +216,11 @@ export default function TracheaSketchfabScene({
             setSketchfabApi(api);
             setApiLoading(false);
             
+            // Hide the annotation tooltips (text tags) while preserving number pins
+            api.hideAnnotationTooltips((err) => {
+              if (err) console.error('Error hiding tooltips on init:', err);
+            });
+            
             // Get annotation list
             api.getAnnotationList((err, annotations) => {
               if (!err && annotations) {
@@ -114,13 +231,27 @@ export default function TracheaSketchfabScene({
             // Sync selection from Sketchfab to React
             api.addEventListener('annotationSelect', (index) => {
               if (index >= 0) {
+                if (isProgrammaticSelection.current) {
+                  isProgrammaticSelection.current = false;
+                  return;
+                }
                 api.getAnnotation(index, (err, ann) => {
                   if (!err && ann) {
+                    const currentActiveId = activeIdRef.current;
                     const part = matchAnnotationToPart(ann.name);
-                    if (part) {
+                    if (part && part.id !== currentActiveId) {
                       onSelect(part.id);
                     }
                   }
+                });
+                
+                // Hide annotation tooltip text tags to keep the 3D canvas clean
+                api.hideAnnotationTooltips((err) => {
+                  if (err) console.error('Error hiding tooltips on select:', err);
+                });
+              } else {
+                api.hideAnnotationTooltips((err) => {
+                  if (err) console.error('Error hiding tooltips on deselect:', err);
                 });
               }
             });
@@ -130,12 +261,13 @@ export default function TracheaSketchfabScene({
           console.error('Sketchfab API error:', err);
           setApiLoading(false);
         },
+        annotation_tooltip_visible: 0,
         ui_infos: 0,
         ui_watermark: 0,
         ui_help: 0,
         ui_settings: 0,
         ui_inspector: 0,
-        transparent: 1, // Enable transparent background to blend model with container background
+        transparent: 1,
         annotations_visible: 1
       });
     };
@@ -166,12 +298,13 @@ export default function TracheaSketchfabScene({
 
   // Sync selection from React to Sketchfab
   useEffect(() => {
-    if (sketchfabApi && annotationsList.length > 0) {
+    if (sketchfabApi && annotationsList.length > 0 && activeId) {
       const index = annotationsList.findIndex(ann => {
         const part = matchAnnotationToPart(ann.name);
         return part && part.id === activeId;
       });
       if (index >= 0) {
+        isProgrammaticSelection.current = true;
         sketchfabApi.gotoAnnotation(index, (err) => {
           if (err) console.warn("Failed to navigate to annotation in Sketchfab", err);
         });
@@ -187,9 +320,11 @@ export default function TracheaSketchfabScene({
     }
   };
 
-  // Helper styles for 3D leader lines and brackets
-  const getLineStyle = (id, baseColor) => {
-    const active = activeId === id || hoveredId === id;
+  const isHighlighted = (id) => activeId === id || hoveredId === id;
+
+  // Helper styles for 3D leader lines
+  const getLineStyle3D = (id, baseColor) => {
+    const active = isHighlighted(id);
     return {
       stroke: active ? baseColor : '#94a3b8',
       strokeWidth: active ? 2.5 : 1.2,
@@ -199,7 +334,7 @@ export default function TracheaSketchfabScene({
   };
 
   // Render a target dot on the 3D model overlay
-  const renderTargetDot = (id, cx, cy, color) => {
+  const renderTargetDot3D = (id, cx, cy, color) => {
     const isActive = activeId === id;
     const isHovered = hoveredId === id;
     const activeOrHovered = isActive || isHovered;
@@ -236,255 +371,293 @@ export default function TracheaSketchfabScene({
     );
   };
 
-  const isHighlighted = (id) => activeId === id || hoveredId === id;
+  const renderSvgHotspot = (id, cx, cy, color) => {
+    const active = isHighlighted(id);
+    return (
+      <g
+        onClick={() => {
+          onSelect(id);
+          playChime('click');
+        }}
+        onMouseEnter={() => setHoveredId(id)}
+        onMouseLeave={() => setHoveredId(null)}
+        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+      >
+        {active && (
+          <circle
+            cx={cx}
+            cy={cy}
+            r={14}
+            fill={color}
+            opacity={0.24}
+            style={{ animation: 'pulse 1.8s infinite', transformOrigin: `${cx}px ${cy}px` }}
+          />
+        )}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={active ? 6.5 : 4}
+          fill={active ? color : '#ffffff'}
+          stroke={color}
+          strokeWidth={active ? 2 : 1.5}
+          style={{ transition: 'all 0.25s ease' }}
+        />
+      </g>
+    );
+  };
 
-  // Render the 2D diagram on the left
-  const renderSVGDiagram = () => (
-    <svg 
-      viewBox="0 0 400 420" 
-      className="trachea-svg-diagram"
-      style={{ width: '100%', height: '100%', maxHeight: '420px', display: 'block', margin: '0 auto' }}
+  const renderSvgLabel = (id, x, y, width, height, labelText, color) => {
+    const active = isHighlighted(id);
+    const isHovered = hoveredId === id;
+    return (
+      <g
+        onClick={() => {
+          onSelect(id);
+          playChime('click');
+        }}
+        onMouseEnter={() => setHoveredId(id)}
+        onMouseLeave={() => setHoveredId(null)}
+        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+      >
+        {/* Background Card */}
+        <rect
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          rx={8}
+          fill={active ? color : isHovered ? 'rgba(240, 246, 255, 0.95)' : '#ffffff'}
+          stroke={active || isHovered ? color : '#cbd5e1'}
+          strokeWidth={active ? 2 : 1.2}
+          style={{ transition: 'all 0.2s ease' }}
+        />
+        {/* Text */}
+        <text
+          x={x + width / 2}
+          y={y + height / 2 + 4} // vertical centering adjustment
+          textAnchor="middle"
+          fill={active ? '#ffffff' : isHovered ? color : '#334155'}
+          fontSize="10px"
+          fontWeight="800"
+          style={{ transition: 'all 0.2s ease', fontFamily: 'inherit' }}
+        >
+          {labelText}
+        </text>
+      </g>
+    );
+  };
+
+  // Render the 2D diagram with unified SVG including labels, brackets, arrows, and background image
+  // Taller viewBox and expanded image size to fill card space and reduce bottom padding
+  const renderSVGDiagram = () => {
+    return (
+      <svg 
+        viewBox="0 0 800 620" 
+        style={{ width: '100%', height: 'auto', display: 'block', userSelect: 'none', background: '#ffffff' }}
+      >
+        <defs>
+          {/* Arrow markers */}
+          <marker id="arrow-left-normal" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M 10 1.5 L 0 5 L 10 8.5 z" fill="#64748b" />
+          </marker>
+          <marker id="arrow-left-active" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M 10 1.5 L 0 5 L 10 8.5 z" fill="currentColor" />
+          </marker>
+          <marker id="arrow-right-normal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#64748b" />
+          </marker>
+          <marker id="arrow-right-active" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="currentColor" />
+          </marker>
+        </defs>
+
+        {/* Trachea Model Image in the center (expanded from width 410 to 550) */}
+        <image 
+          href="/references/trachea_diagram.png" 
+          x="125" 
+          y="20" 
+          width="550" 
+          height="580" 
+        />
+
+        {/* Lines, Brackets, and Arrows (perfectly straight and matching the 3D lines) */}
+        {/* 1. Cartilagines Tracheales (Teal) */}
+        <line 
+          x1="180" y1="151" x2="380" y2="151" 
+          stroke={isHighlighted('kartilago-trakea') ? '#0d9488' : '#64748b'}
+          strokeWidth={isHighlighted('kartilago-trakea') ? 2.5 : 1.2}
+          markerStart={isHighlighted('kartilago-trakea') ? "url(#arrow-left-active)" : "url(#arrow-left-normal)"}
+          style={{ transition: 'all 0.2s ease', color: '#0d9488' }}
+        />
+
+        {/* 2. Ligamenta Annularia (Green) */}
+        <line 
+          x1="180" y1="213" x2="380" y2="213" 
+          stroke={isHighlighted('ligamenta-annularia') ? '#10b981' : '#64748b'}
+          strokeWidth={isHighlighted('ligamenta-annularia') ? 2.5 : 1.2}
+          markerStart={isHighlighted('ligamenta-annularia') ? "url(#arrow-left-active)" : "url(#arrow-left-normal)"}
+          style={{ transition: 'all 0.2s ease', color: '#10b981' }}
+        />
+
+        {/* 3. Trachea, Pars Cervicalis Bracket & Line (Blue) */}
+        <path 
+          d="M 415 50 L 420 50 L 420 140 L 415 140" 
+          fill="none" 
+          stroke={isHighlighted('trachea-pars-cervicalis') ? '#0284c7' : '#64748b'} 
+          strokeWidth={isHighlighted('trachea-pars-cervicalis') ? 3 : 1.5} 
+          style={{ transition: 'all 0.2s ease' }}
+        />
+        <line 
+          x1="420" y1="98" x2="620" y2="98" 
+          stroke={isHighlighted('trachea-pars-cervicalis') ? '#0284c7' : '#64748b'} 
+          strokeWidth={isHighlighted('trachea-pars-cervicalis') ? 2.5 : 1.2} 
+          markerEnd={isHighlighted('trachea-pars-cervicalis') ? "url(#arrow-right-active)" : "url(#arrow-right-normal)"}
+          style={{ transition: 'all 0.2s ease', color: '#0284c7' }}
+        />
+
+        {/* 4. Trachea, Pars Thoracica Bracket & Line (Dark Blue) */}
+        <path 
+          d="M 415 145 L 420 145 L 420 340 L 415 340" 
+          fill="none" 
+          stroke={isHighlighted('trachea-pars-thoracica') ? '#0369a1' : '#64748b'} 
+          strokeWidth={isHighlighted('trachea-pars-thoracica') ? 3 : 1.5} 
+          style={{ transition: 'all 0.2s ease' }}
+        />
+        <line 
+          x1="420" y1="264" x2="620" y2="264" 
+          stroke={isHighlighted('trachea-pars-thoracica') ? '#0369a1' : '#64748b'} 
+          strokeWidth={isHighlighted('trachea-pars-thoracica') ? 2.5 : 1.2} 
+          markerEnd={isHighlighted('trachea-pars-thoracica') ? "url(#arrow-right-active)" : "url(#arrow-right-normal)"}
+          style={{ transition: 'all 0.2s ease', color: '#0369a1' }}
+        />
+
+        {/* 5. Bifurcatio Trachea Line & Arrow (Amber) */}
+        <line 
+          x1="410" y1="356" x2="620" y2="356" 
+          stroke={isHighlighted('karina') ? '#d97706' : '#64748b'} 
+          strokeWidth={isHighlighted('karina') ? 2.5 : 1.2} 
+          markerEnd={isHighlighted('karina') ? "url(#arrow-right-active)" : "url(#arrow-right-normal)"}
+          style={{ transition: 'all 0.2s ease', color: '#d97706' }}
+        />
+
+        {/* Hotspots (Interactive Dots on the trachea) */}
+        {renderSvgHotspot('trachea-pars-cervicalis', 400, 98, '#0284c7')}
+        {renderSvgHotspot('kartilago-trakea', 400, 151, '#0d9488')}
+        {renderSvgHotspot('ligamenta-annularia', 400, 213, '#10b981')}
+        {renderSvgHotspot('trachea-pars-thoracica', 400, 264, '#0369a1')}
+        {renderSvgHotspot('karina', 400, 356, '#d97706')}
+
+        {/* Interactive Label Cards (aligned perfectly on the sides) */}
+        {renderSvgLabel('kartilago-trakea', 15, 133, 165, 36, lang === 'id' ? 'Cartilagines Trachales' : 'Tracheal Cartilages', '#0d9488')}
+        {renderSvgLabel('ligamenta-annularia', 15, 195, 165, 36, lang === 'id' ? 'Ligamenta Annularia' : 'Annular Ligaments', '#10b981')}
+        
+        {renderSvgLabel('trachea-pars-cervicalis', 620, 80, 165, 36, lang === 'id' ? 'Trachea Pars Cervicalis' : 'Cervical Trachea', '#0284c7')}
+        {renderSvgLabel('trachea-pars-thoracica', 620, 246, 165, 36, lang === 'id' ? 'Trachea Pars Thoracica' : 'Thoracic Trachea', '#0369a1')}
+        {renderSvgLabel('karina', 620, 338, 165, 36, lang === 'id' ? 'Bifurcatio Trachea' : 'Tracheal Bifurcation', '#d97706')}
+      </svg>
+    );
+  };
+
+  const cervicalActive3D = activeId === 'trachea-pars-cervicalis' || hoveredId === 'trachea-pars-cervicalis';
+  const thoracicActive3D = activeId === 'trachea-pars-thoracica' || hoveredId === 'trachea-pars-thoracica';
+
+  const diagramPane = (
+    <div 
+      className={`trachea-diagram-pane ${isDiagramCollapsed ? 'collapsed-card' : ''} ${activeTab === 'diagram' ? 'mobile-visible' : 'mobile-hidden'}`}
+      style={(!isFullscreen && isDesktop) ? {
+        width: '100%',
+        height: 'auto',
+        background: '#ffffff',
+        border: '1.5px solid #cbd5e1',
+        borderRadius: '16px',
+        padding: '16px',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: '0 4px 12px rgba(15, 23, 42, 0.04)',
+        overflowY: 'visible',
+        position: 'relative'
+      } : {
+        width: '35%',
+        height: '100%',
+        background: '#ffffff',
+        borderRight: '1px solid #cbd5e1',
+        padding: '16px 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        overflowY: 'auto'
+      }}
     >
-      <defs>
-        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="3" result="blur" />
-          <feComposite in="SourceGraphic" in2="blur" operator="over" />
-        </filter>
-        <marker id="arrow-2d" viewBox="0 0 10 10" refX="0" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-          <path d="M 10 1.5 L 0 5 L 10 8.5 z" fill="#0284c7" />
-        </marker>
-        <marker id="arrow-normal-2d" viewBox="0 0 10 10" refX="0" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-          <path d="M 10 1.5 L 0 5 L 10 8.5 z" fill="#64748b" />
-        </marker>
-      </defs>
-
-      <rect width="400" height="420" rx="20" fill="#f8fafc" />
-
-      {/* Trahea tube representation */}
-      <rect 
-        x="185" 
-        y="50" 
-        width="30" 
-        height="225" 
-        fill="#f1f5f9" 
-        stroke="#e2e8f0" 
-        strokeWidth="1"
-      />
-
-      {/* Ligaments */}
-      {cervicalRings.slice(0, -1).map((y, idx) => (
-        <rect
-          key={`c-lig-${idx}`}
-          x="182"
-          y={y + 14}
-          width="36"
-          height="6"
-          rx="1"
-          fill={isHighlighted('ligamenta-annularia') ? '#10b981' : '#cbd5e1'}
-          onClick={() => onSelect('ligamenta-annularia')}
-          onMouseEnter={() => setHoveredId('ligamenta-annularia')}
-          onMouseLeave={() => setHoveredId(null)}
-          style={{ cursor: 'pointer', transition: 'fill 0.2s ease' }}
-        />
-      ))}
-      <rect
-        x="182"
-        y="134"
-        width="36"
-        height="14"
-        rx="1"
-        fill={isHighlighted('ligamenta-annularia') ? '#10b981' : '#cbd5e1'}
-        onClick={() => onSelect('ligamenta-annularia')}
-        onMouseEnter={() => setHoveredId('ligamenta-annularia')}
-        onMouseLeave={() => setHoveredId(null)}
-        style={{ cursor: 'pointer', transition: 'fill 0.2s ease' }}
-      />
-      {thoracicRings.slice(0, -1).map((y, idx) => (
-        <rect
-          key={`t-lig-${idx}`}
-          x="182"
-          y={y + 14}
-          width="36"
-          height="6"
-          rx="1"
-          fill={isHighlighted('ligamenta-annularia') ? '#10b981' : '#cbd5e1'}
-          onClick={() => onSelect('ligamenta-annularia')}
-          onMouseEnter={() => setHoveredId('ligamenta-annularia')}
-          onMouseLeave={() => setHoveredId(null)}
-          style={{ cursor: 'pointer', transition: 'fill 0.2s ease' }}
-        />
-      ))}
-
-      {/* Cartilage rings */}
-      {cervicalRings.map((y, idx) => (
-        <rect
-          key={`c-ring-${idx}`}
-          x="180"
-          y={y}
-          width="40"
-          height="14"
-          rx="3"
-          fill={isHighlighted('kartilago-trakea') ? '#0d9488' : isHighlighted('trachea-pars-cervicalis') ? '#bae6fd' : '#ffffff'}
-          stroke={isHighlighted('kartilago-trakea') ? '#0d9488' : isHighlighted('trachea-pars-cervicalis') ? '#0284c7' : '#94a3b8'}
-          strokeWidth={isHighlighted('kartilago-trakea') || isHighlighted('trachea-pars-cervicalis') ? "2" : "1.2"}
-          onClick={() => onSelect('kartilago-trakea')}
-          onMouseEnter={() => setHoveredId('kartilago-trakea')}
-          onMouseLeave={() => setHoveredId(null)}
-          style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
-        />
-      ))}
-      {thoracicRings.map((y, idx) => (
-        <rect
-          key={`t-ring-${idx}`}
-          x="180"
-          y={y}
-          width="40"
-          height="14"
-          rx="3"
-          fill={isHighlighted('kartilago-trakea') ? '#0d9488' : isHighlighted('trachea-pars-thoracica') ? '#cfe2ff' : '#ffffff'}
-          stroke={isHighlighted('kartilago-trakea') ? '#0d9488' : isHighlighted('trachea-pars-thoracica') ? '#0369a1' : '#94a3b8'}
-          strokeWidth={isHighlighted('kartilago-trakea') || isHighlighted('trachea-pars-thoracica') ? "2" : "1.2"}
-          onClick={() => onSelect('kartilago-trakea')}
-          onMouseEnter={() => setHoveredId('kartilago-trakea')}
-          onMouseLeave={() => setHoveredId(null)}
-          style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
-        />
-      ))}
-
-      {/* Bifurcatio */}
-      <path 
-        d="M 185 262 L 185 282 Q 185 302 165 315 L 140 330 L 130 345 L 140 355 L 155 342 L 175 326 Q 198 308 200 295 Q 202 308 225 326 L 245 342 L 260 355 L 270 345 L 260 330 L 235 315 Q 215 302 215 282 L 215 262 Z" 
-        fill={isHighlighted('karina') ? '#f59e0b' : '#ffffff'}
-        stroke={isHighlighted('karina') ? '#d97706' : '#94a3b8'}
-        strokeWidth={isHighlighted('karina') ? "2.5" : "1.5"}
-        onClick={() => onSelect('karina')}
-        onMouseEnter={() => setHoveredId('karina')}
-        onMouseLeave={() => setHoveredId(null)}
-        filter={isHighlighted('karina') ? "url(#glow)" : "none"}
-        style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
-      />
-      <line 
-        x1="200" y1="282" x2="200" y2="295" 
-        stroke={isHighlighted('karina') ? '#b45309' : '#cbd5e1'} 
-        strokeWidth="2" 
-        strokeDasharray="2,2" 
-        pointerEvents="none"
-      />
-
-      {/* Brackets */}
-      <path
-        d="M 230 54 L 236 54 L 236 126 L 230 126 M 236 90 L 242 90"
-        fill="none"
-        stroke={isHighlighted('trachea-pars-cervicalis') ? '#0284c7' : '#94a3b8'}
-        strokeWidth={isHighlighted('trachea-pars-cervicalis') ? '3.5' : '1.8'}
-        onClick={() => onSelect('trachea-pars-cervicalis')}
-        onMouseEnter={() => setHoveredId('trachea-pars-cervicalis')}
-        onMouseLeave={() => setHoveredId(null)}
-        style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
-      />
-      <path
-        d="M 230 142 L 236 142 L 236 256 L 230 256 M 236 199 L 242 199"
-        fill="none"
-        stroke={isHighlighted('trachea-pars-thoracica') ? '#0369a1' : '#94a3b8'}
-        strokeWidth={isHighlighted('trachea-pars-thoracica') ? '3.5' : '1.8'}
-        onClick={() => onSelect('trachea-pars-thoracica')}
-        onMouseEnter={() => setHoveredId('trachea-pars-thoracica')}
-        onMouseLeave={() => setHoveredId(null)}
-        style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
-      />
-
-      {/* Lines and Labels */}
-      {showLabels && (
+      {isDiagramCollapsed ? (
+        <button 
+          onClick={() => {
+            setIsDiagramCollapsed(false);
+            playChime('click');
+          }}
+          className="soft-button"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '10px 14px',
+            borderRadius: '12px',
+            boxShadow: '0 4px 12px rgba(15, 23, 42, 0.08)',
+            fontWeight: '800',
+            fontSize: '11px',
+            background: '#ffffff',
+            border: '1.5px solid #cbd5e1'
+          }}
+        >
+          <BookOpen size={14} color="#0284c7" />
+          <span>{lang === 'id' ? 'Tampilkan Gambar 2D' : 'Show 2D Diagram'}</span>
+        </button>
+      ) : (
         <>
-          <line
-            x1="120" y1="100" x2="175" y2="100"
-            stroke={isHighlighted('kartilago-trakea') ? '#0d9488' : '#64748b'}
-            strokeWidth={isHighlighted('kartilago-trakea') ? '2.5' : '1.2'}
-            markerStart={isHighlighted('kartilago-trakea') ? 'url(#arrow-2d)' : 'url(#arrow-normal-2d)'}
-          />
-          <foreignObject x="10" y="80" width="115" height="40">
-            <button
-              onClick={() => onSelect('kartilago-trakea')}
-              onMouseEnter={() => setHoveredId('kartilago-trakea')}
-              onMouseLeave={() => setHoveredId(null)}
-              className={`diag-label-btn ${isHighlighted('kartilago-trakea') ? 'active teal' : ''}`}
-            >
-              Cartilagines Tracheales
-            </button>
-          </foreignObject>
+          {/* Header row with Hide button for Fullscreen */}
+          {isFullscreen && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+              <button 
+                onClick={() => {
+                  setIsDiagramCollapsed(true);
+                  playChime('click');
+                }}
+                className="desktop-only-hide-btn"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '10.5px',
+                  fontWeight: '700',
+                  padding: 0
+                }}
+                title={lang === 'id' ? 'Sembunyikan Gambar 2D' : 'Hide 2D Diagram'}
+              >
+                <EyeOff size={13} />
+                <span>{lang === 'id' ? 'Sembunyikan' : 'Hide'}</span>
+              </button>
+            </div>
+          )}
 
-          <line
-            x1="120" y1="172" x2="178" y2="172"
-            stroke={isHighlighted('ligamenta-annularia') ? '#10b981' : '#64748b'}
-            strokeWidth={isHighlighted('ligamenta-annularia') ? '2.5' : '1.2'}
-            markerStart={isHighlighted('ligamenta-annularia') ? 'url(#arrow-2d)' : 'url(#arrow-normal-2d)'}
-          />
-          <foreignObject x="10" y="152" width="115" height="40">
-            <button
-              onClick={() => onSelect('ligamenta-annularia')}
-              onMouseEnter={() => setHoveredId('ligamenta-annularia')}
-              onMouseLeave={() => setHoveredId(null)}
-              className={`diag-label-btn ${isHighlighted('ligamenta-annularia') ? 'active green' : ''}`}
-            >
-              Ligamenta Annularia
-            </button>
-          </foreignObject>
-
-          <line
-            x1="242" y1="90" x2="280" y2="90"
-            stroke={isHighlighted('trachea-pars-cervicalis') ? '#0284c7' : '#64748b'}
-            strokeWidth={isHighlighted('trachea-pars-cervicalis') ? '2.5' : '1.2'}
-          />
-          <foreignObject x="282" y="70" width="110" height="40">
-            <button
-              onClick={() => onSelect('trachea-pars-cervicalis')}
-              onMouseEnter={() => setHoveredId('trachea-pars-cervicalis')}
-              onMouseLeave={() => setHoveredId(null)}
-              className={`diag-label-btn ${isHighlighted('trachea-pars-cervicalis') ? 'active blue' : ''}`}
-            >
-              Trachea, Pars Cervicalis
-            </button>
-          </foreignObject>
-
-          <line
-            x1="242" y1="199" x2="280" y2="199"
-            stroke={isHighlighted('trachea-pars-thoracica') ? '#0369a1' : '#64748b'}
-            strokeWidth={isHighlighted('trachea-pars-thoracica') ? '2.5' : '1.2'}
-          />
-          <foreignObject x="282" y="179" width="110" height="40">
-            <button
-              onClick={() => onSelect('trachea-pars-thoracica')}
-              onMouseEnter={() => setHoveredId('trachea-pars-thoracica')}
-              onMouseLeave={() => setHoveredId(null)}
-              className={`diag-label-btn ${isHighlighted('trachea-pars-thoracica') ? 'active darkblue' : ''}`}
-            >
-              Trachea, Pars Thoracica
-            </button>
-          </foreignObject>
-
-          <line
-            x1="200" y1="292" x2="280" y2="292"
-            stroke={isHighlighted('karina') ? '#d97706' : '#64748b'}
-            strokeWidth={isHighlighted('karina') ? '2.5' : '1.2'}
-            markerStart={isHighlighted('karina') ? 'url(#arrow-2d)' : 'url(#arrow-normal-2d)'}
-          />
-          <foreignObject x="282" y="272" width="110" height="40">
-            <button
-              onClick={() => onSelect('karina')}
-              onMouseEnter={() => setHoveredId('karina')}
-              onMouseLeave={() => setHoveredId(null)}
-              className={`diag-label-btn ${isHighlighted('karina') ? 'active amber' : ''}`}
-            >
-              Bifurcatio Trachea
-            </button>
-          </foreignObject>
+          <div style={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '100%', maxWidth: '100%' }}>
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '11px', fontWeight: '800', color: '#1e293b', textAlign: 'center' }}>
+                {lang === 'id' ? 'DIAGRAM INTERAKTIF TRAKEA' : 'INTERACTIVE TRACHEA DIAGRAM'}
+              </h4>
+              {renderSVGDiagram()}
+              <p style={{ margin: '14px 0 0 0', fontSize: '10px', color: '#64748b', textAlign: 'center', lineHeight: '1.4' }}>
+                {lang === 'id' 
+                  ? 'Klik/ketuk nama label di atas atau area diagram untuk menyorot bagian tersebut.' 
+                  : 'Click/tap the labels above or the diagram regions to select and view description.'}
+              </p>
+            </div>
+          </div>
         </>
       )}
-    </svg>
+    </div>
   );
-
-  const cervicalActive = activeId === 'trachea-pars-cervicalis' || hoveredId === 'trachea-pars-cervicalis';
-  const thoracicActive = activeId === 'trachea-pars-thoracica' || hoveredId === 'trachea-pars-thoracica';
 
   return (
     <div className="segment-scene-container" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
@@ -530,39 +703,14 @@ export default function TracheaSketchfabScene({
       {/* Split-Screen Layout Grid Container */}
       <div className="trachea-split-container" style={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
         
-        {/* LEFT COLUMN: INTERACTIVE DIAGRAM */}
-        <div 
-          className={`trachea-diagram-pane ${activeTab === 'diagram' ? 'mobile-visible' : 'mobile-hidden'}`}
-          style={{
-            width: '35%',
-            height: '100%',
-            background: '#ffffff',
-            borderRight: '1px solid #cbd5e1',
-            padding: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflowY: 'auto'
-          }}
-        >
-          <div style={{ width: '100%', maxWidth: '340px' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '800', color: '#0f172a', textAlign: 'center', letterSpacing: '-0.3px' }}>
-              {lang === 'id' ? 'DIAGRAM INTERAKTIF TRAKEA' : 'INTERACTIVE TRACHEA DIAGRAM'}
-            </h3>
-            {renderSVGDiagram()}
-            <p style={{ margin: '14px 0 0 0', fontSize: '11px', color: '#64748b', textAlign: 'center', lineHeight: '1.4' }}>
-              {lang === 'id' 
-                ? 'Klik/ketuk nama label di atas atau area diagram untuk menyorot bagian tersebut.' 
-                : 'Click/tap the labels above or the diagram regions to select and view description.'}
-            </p>
-          </div>
-        </div>
+        {/* On mobile: Render diagramPane as a full-page tab. On desktop: Not rendered here (it floats inside 3D pane instead). */}
+        {!isDesktop && activeTab === 'diagram' && diagramPane}
 
-        {/* RIGHT COLUMN: 3D VIEWER (Sketchfab Embed with Interactive Pins & SVG Overlay) */}
+        {/* RIGHT COLUMN: 3D VIEWER (Takes 100% width on desktop) */}
         <div 
           className={`trachea-3d-pane ${activeTab === 'sketchfab' ? 'mobile-visible' : 'mobile-hidden'}`}
           style={{
-            width: '65%',
+            width: isDesktop ? '100%' : '100%',
             height: '100%',
             display: 'flex',
             alignItems: 'center',
@@ -583,7 +731,51 @@ export default function TracheaSketchfabScene({
             </button>
           )}
 
-          {/* Inner container forced to 4:3 aspect ratio to guarantee perfect alignment of overlay and iframe */}
+          {/* Toggle 2D Diagram Button (Desktop only) */}
+          {!apiLoading && isDesktop && (
+            <button 
+              className="floating-camera-reset-btn"
+              style={{ left: '130px' }}
+              onClick={() => setIsDiagramOpen(!isDiagramOpen)}
+              title={isDiagramOpen ? (lang === 'id' ? 'Sembunyikan Diagram 2D' : 'Hide 2D Diagram') : (lang === 'id' ? 'Tampilkan Diagram 2D' : 'Show 2D Diagram')}
+            >
+              <BookOpen size={13} />
+              <span>{isDiagramOpen ? (lang === 'id' ? 'Sembunyikan Diagram' : 'Hide Diagram') : (lang === 'id' ? 'Tampilkan Diagram' : 'Show Diagram')}</span>
+            </button>
+          )}
+
+          {/* User notice for pin numbers */}
+          {!apiLoading && (
+            <div style={{
+              position: 'absolute',
+              left: '16px',
+              top: '16px',
+              background: 'rgba(2, 132, 199, 0.08)',
+              backdropFilter: 'blur(8px)',
+              border: '1.5px solid #bae6fd',
+              borderRadius: '10px',
+              padding: '8px 12px',
+              fontSize: '11px',
+              fontWeight: '700',
+              color: '#0369a1',
+              maxWidth: '300px',
+              pointerEvents: 'none',
+              zIndex: 5,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 4px 12px rgba(2, 132, 199, 0.04)'
+            }}>
+              <span>💡</span>
+              <span>
+                {lang === 'id' 
+                  ? 'Ketuk nomor pin pada model 3D untuk mendengar penjelasannya!' 
+                  : 'Tap the pin numbers on the 3D model to hear the voice explanation!'}
+              </span>
+            </div>
+          )}
+
+          {/* Inner container forced to 4:3 aspect ratio */}
           <div style={{
             position: 'relative',
             height: '100%',
@@ -612,194 +804,293 @@ export default function TracheaSketchfabScene({
               </div>
             )}
 
-          {/* Transparent SVG Overlay (Lines, Brackets, and Labels) */}
-          {!apiLoading && showLabels && (
-            <svg 
-              viewBox="0 0 800 600" 
-              preserveAspectRatio="xMidYMid meet"
-              className="trachea-svg-overlay"
-            >
-              <defs>
-                {/* Arrow markers for each part */}
-                <marker id="arrow-normal" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                  <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#94a3b8" />
-                </marker>
-                <marker id="arrow-kartilago-trakea" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                  <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#0d9488" />
-                </marker>
-                <marker id="arrow-ligamenta-annularia" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                  <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#10b981" />
-                </marker>
-                <marker id="arrow-karina" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                  <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#d97706" />
-                </marker>
-              </defs>
+            {/* Transparent SVG Overlay (Lines, Brackets, and Labels) on top of 3D Canvas */}
+            {/* Formatted to match the 2D layout with straight horizontal lines and vertical brackets */}
+            {!apiLoading && showLabels && (
+              <svg 
+                viewBox="0 0 800 600" 
+                preserveAspectRatio="xMidYMid meet"
+                className="trachea-svg-overlay"
+              >
+                <defs>
+                  {/* Arrow markers for 3D overlay pointing towards labels */}
+                  <marker id="arrow-3d-left-normal" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 10 1.5 L 0 5 L 10 8.5 z" fill="#94a3b8" />
+                  </marker>
+                  <marker id="arrow-3d-left-active" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 10 1.5 L 0 5 L 10 8.5 z" fill="currentColor" />
+                  </marker>
+                  <marker id="arrow-3d-right-normal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#94a3b8" />
+                  </marker>
+                  <marker id="arrow-3d-right-active" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="currentColor" />
+                  </marker>
+                </defs>
 
-              {/* ================= LEFT SIDE LEADER LINES & TARGET PIN DOTS ================= */}
-              
-              {/* 1. Cartilagines Tracheales (Teal) */}
-              <path 
-                d="M 230 182 L 300 182 L 338 196" 
-                {...getLineStyle('kartilago-trakea', '#0d9488')}
-                markerEnd={activeId === 'kartilago-trakea' || hoveredId === 'kartilago-trakea' ? 'url(#arrow-kartilago-trakea)' : 'url(#arrow-normal)'}
-              />
-              {renderTargetDot('kartilago-trakea', 344, 198, '#0d9488')}
-
-              {/* 2. Ligamenta Annularia (Green) */}
-              <path 
-                d="M 230 302 L 300 302 L 340 234" 
-                {...getLineStyle('ligamenta-annularia', '#10b981')}
-                markerEnd={activeId === 'ligamenta-annularia' || hoveredId === 'ligamenta-annularia' ? 'url(#arrow-ligamenta-annularia)' : 'url(#arrow-normal)'}
-              />
-              {renderTargetDot('ligamenta-annularia', 346, 230, '#10b981')}
-
-              {/* ================= RIGHT SIDE LEADER LINES & REGIONAL BRACKETS ================= */}
-
-              {/* 3. Trachea, Pars Cervicalis Bracket */}
-              <path 
-                d="M 412 110 L 417 110 L 417 200 L 412 200" 
-                stroke={cervicalActive ? '#0284c7' : '#94a3b8'} 
-                strokeWidth={cervicalActive ? 3 : 1.5} 
-                fill="none" 
-                style={{ transition: 'all 0.2s ease' }}
-              />
-              <line 
-                x1="417" y1="155" x2="425" y2="155" 
-                stroke={cervicalActive ? '#0284c7' : '#94a3b8'} 
-                strokeWidth={cervicalActive ? 3 : 1.5} 
-                style={{ transition: 'all 0.2s ease' }} 
-              />
-              <path 
-                d="M 425 155 L 480 142 L 570 142" 
-                {...getLineStyle('trachea-pars-cervicalis', '#0284c7')} 
-              />
-
-              {/* 4. Trachea, Pars Thoracica Bracket */}
-              <path 
-                d="M 412 208 L 417 208 L 417 385 L 412 385" 
-                stroke={thoracicActive ? '#0369a1' : '#94a3b8'} 
-                strokeWidth={thoracicActive ? 3 : 1.5} 
-                fill="none" 
-                style={{ transition: 'all 0.2s ease' }}
-              />
-              <line 
-                x1="417" y1="295" x2="425" y2="295" 
-                stroke={thoracicActive ? '#0369a1' : '#94a3b8'} 
-                strokeWidth={thoracicActive ? 3 : 1.5} 
-                style={{ transition: 'all 0.2s ease' }} 
-              />
-              <path 
-                d="M 425 295 L 480 282 L 570 282" 
-                {...getLineStyle('trachea-pars-thoracica', '#0369a1')} 
-              />
-
-              {/* 5. Bifurcatio Trachea (Amber) */}
-              <path 
-                d="M 570 387 L 480 387 L 406 406" 
-                {...getLineStyle('karina', '#d97706')}
-                markerEnd={activeId === 'karina' || hoveredId === 'karina' ? 'url(#arrow-karina)' : 'url(#arrow-normal)'}
-              />
-              {renderTargetDot('karina', 400, 408, '#d97706')}
-
-              {/* ================= INTERACTIVE LABELS ================= */}
-              {partsList.map((part) => {
-                const isActive = activeId === part.id;
-                const isHovered = hoveredId === part.id;
+                {/* ================= LEFT SIDE LEADER LINES & TARGET PIN DOTS ================= */}
                 
-                return (
-                  <g
-                    key={part.id}
-                    onClick={() => onSelect(part.id)}
-                    onMouseEnter={() => setHoveredId(part.id)}
-                    onMouseLeave={() => setHoveredId(null)}
-                    style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-                  >
-                    <rect
-                      x={part.x}
-                      y={part.y - 18}
-                      width={190}
-                      height={36}
-                      rx={8}
-                      fill={isActive ? part.color : isHovered ? 'rgba(240, 246, 255, 0.95)' : 'rgba(255, 255, 255, 0.85)'}
-                      stroke={isActive || isHovered ? part.color : '#cbd5e1'}
-                      strokeWidth={isActive ? 2 : 1.2}
-                      style={{ transition: 'all 0.2s ease' }}
-                    />
-                    <text
-                      x={part.x + 95}
-                      y={part.y + 4}
-                      textAnchor="middle"
-                      fill={isActive ? '#ffffff' : isHovered ? part.color : '#334155'}
-                      fontSize="11px"
-                      fontWeight="700"
-                      style={{ transition: 'all 0.2s ease', userSelect: 'none', fontFamily: 'inherit' }}
+                {/* 1. Cartilagines Tracheales (Teal) */}
+                <line 
+                  x1="230" y1="150" x2="344" y2="150" 
+                  stroke={isHighlighted('kartilago-trakea') ? '#0d9488' : '#94a3b8'}
+                  strokeWidth={isHighlighted('kartilago-trakea') ? 2.5 : 1.2}
+                  markerStart={isHighlighted('kartilago-trakea') ? 'url(#arrow-3d-left-active)' : 'url(#arrow-3d-left-normal)'}
+                  style={{ transition: 'all 0.2s ease', color: '#0d9488' }}
+                />
+                {renderTargetDot3D('kartilago-trakea', 344, 150, '#0d9488')}
+
+                {/* 2. Ligamenta Annularia (Green) */}
+                <line 
+                  x1="230" y1="210" x2="346" y2="210" 
+                  stroke={isHighlighted('ligamenta-annularia') ? '#10b981' : '#94a3b8'}
+                  strokeWidth={isHighlighted('ligamenta-annularia') ? 2.5 : 1.2}
+                  markerStart={isHighlighted('ligamenta-annularia') ? 'url(#arrow-3d-left-active)' : 'url(#arrow-3d-left-normal)'}
+                  style={{ transition: 'all 0.2s ease', color: '#10b981' }}
+                />
+                {renderTargetDot3D('ligamenta-annularia', 346, 210, '#10b981')}
+
+                {/* ================= RIGHT SIDE LEADER LINES & REGIONAL BRACKETS ================= */}
+
+                {/* 3. Trachea, Pars Cervicalis Bracket */}
+                <path 
+                  d="M 410 70 L 415 70 L 415 170 L 410 170" 
+                  stroke={cervicalActive3D ? '#0284c7' : '#94a3b8'} 
+                  strokeWidth={cervicalActive3D ? 3 : 1.5} 
+                  fill="none" 
+                  style={{ transition: 'all 0.2s ease' }}
+                />
+                <line 
+                  x1="415" y1="120" x2="570" y2="120" 
+                  stroke={cervicalActive3D ? '#0284c7' : '#94a3b8'} 
+                  strokeWidth={cervicalActive3D ? 2.5 : 1.2} 
+                  markerEnd={cervicalActive3D ? 'url(#arrow-3d-right-active)' : 'url(#arrow-3d-right-normal)'}
+                  style={{ transition: 'all 0.2s ease', color: '#0284c7' }} 
+                />
+
+                {/* 4. Trachea, Pars Thoracica Bracket */}
+                <path 
+                  d="M 410 175 L 415 175 L 415 365 L 410 365" 
+                  stroke={thoracicActive3D ? '#0369a1' : '#94a3b8'} 
+                  strokeWidth={thoracicActive3D ? 3 : 1.5} 
+                  fill="none" 
+                  style={{ transition: 'all 0.2s ease' }}
+                />
+                <line 
+                  x1="415" y1="270" x2="570" y2="270" 
+                  stroke={thoracicActive3D ? '#0369a1' : '#94a3b8'} 
+                  strokeWidth={thoracicActive3D ? 2.5 : 1.2} 
+                  markerEnd={thoracicActive3D ? 'url(#arrow-3d-right-active)' : 'url(#arrow-3d-right-normal)'}
+                  style={{ transition: 'all 0.2s ease', color: '#0369a1' }} 
+                />
+
+                {/* 5. Bifurcatio Trachea (Amber) */}
+                <line 
+                  x1="410" y1="390" x2="570" y2="390" 
+                  stroke={isHighlighted('karina') ? '#d97706' : '#94a3b8'}
+                  strokeWidth={isHighlighted('karina') ? 2.5 : 1.2}
+                  markerEnd={isHighlighted('karina') ? 'url(#arrow-3d-right-active)' : 'url(#arrow-3d-right-normal)'}
+                  style={{ transition: 'all 0.2s ease', color: '#d97706' }}
+                />
+                {renderTargetDot3D('karina', 410, 390, '#d97706')}
+
+                {/* ================= INTERACTIVE LABELS OVERLAYING 3D ================= */}
+                {partsList3D.map((part) => {
+                  const isActive = activeId === part.id;
+                  const isHovered = hoveredId === part.id;
+                  
+                  return (
+                    <g
+                      key={part.id}
+                      onClick={() => onSelect(part.id)}
+                      onMouseEnter={() => setHoveredId(part.id)}
+                      onMouseLeave={() => setHoveredId(null)}
+                      style={{ cursor: 'pointer', pointerEvents: 'auto' }}
                     >
-                      {part.name[lang]}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
-          )}
+                      <rect
+                        x={part.x}
+                        y={part.y - 18}
+                        width={190}
+                        height={36}
+                        rx={8}
+                        fill={isActive ? part.color : isHovered ? 'rgba(240, 246, 255, 0.95)' : 'rgba(255, 255, 255, 0.85)'}
+                        stroke={isActive || isHovered ? part.color : '#cbd5e1'}
+                        strokeWidth={isActive ? 2 : 1.2}
+                        style={{ transition: 'all 0.2s ease' }}
+                      />
+                      <text
+                        x={part.x + 95}
+                        y={part.y + 4}
+                        textAnchor="middle"
+                        fill={isActive ? '#ffffff' : isHovered ? part.color : '#334155'}
+                        fontSize="11px"
+                        fontWeight="700"
+                        style={{ transition: 'all 0.2s ease', userSelect: 'none', fontFamily: 'inherit' }}
+                      >
+                        {part.name[lang]}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            )}
 
-          {/* Sketchfab IFrame Container */}
-          <iframe 
-            ref={iframeRef}
-            id="sketchfab-iframe"
-            title="Trachea &amp; Main Bronchi" 
-            frameBorder="0" 
-            allowFullScreen 
-            mozallowfullscreen="true" 
-            webkitallowfullscreen="true" 
-            allow="autoplay; fullscreen; xr-spatial-tracking; accelerometer; gyroscope" 
-            xr-spatial-tracking="true" 
-            execution-while-out-of-viewport="true" 
-            execution-while-not-rendered="true" 
-            web-share="true" 
-            src="https://sketchfab.com/models/5604db883bd640c8b90838bb787340bd/embed"
-            style={{ width: '100%', height: '100%', border: '0', display: 'block' }}
-          />
+            {/* Sketchfab IFrame Container */}
+            <iframe 
+              ref={iframeRef}
+              id="sketchfab-iframe"
+              title="Trachea &amp; Main Bronchi" 
+              frameBorder="0" 
+              allowFullScreen 
+              mozallowfullscreen="true" 
+              webkitallowfullscreen="true" 
+              allow="autoplay; fullscreen; xr-spatial-tracking; accelerometer; gyroscope" 
+              xr-spatial-tracking="true" 
+              execution-while-out-of-viewport="true" 
+              execution-while-not-rendered="true" 
+              web-share="true" 
+              src="https://sketchfab.com/models/5604db883bd640c8b90838bb787340bd/embed?annotation_tooltip_visible=0&ui_infos=0&ui_watermark=0&ui_help=0&ui_settings=0&ui_inspector=0&transparent=1&annotations_visible=1"
+              style={{ width: '100%', height: '100%', border: '0', display: 'block' }}
+            />
 
-          {/* Floating Fullscreen Toggle Button in bottom right */}
-          <button 
-            className="floating-fullscreen-btn"
-            onClick={() => setIsFullscreen()}
-            title={isFullscreen ? (lang === 'id' ? 'Keluar Layar Penuh' : 'Exit Fullscreen') : (lang === 'id' ? 'Layar Penuh' : 'Fullscreen')}
-          >
-            {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-          </button>
+            {/* Mode label watermark */}
+            <div 
+              style={{ 
+                position: 'absolute', 
+                left: '16px', 
+                bottom: '16px', 
+                background: 'rgba(255, 255, 255, 0.85)', 
+                backdropFilter: 'blur(8px)',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                fontSize: '10.5px',
+                fontWeight: '700',
+                color: '#475569',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                pointerEvents: 'none',
+                zIndex: 5
+              }}
+            >
+              <Rotate3D size={13} />
+              <span>
+                {lang === 'id' ? 'Sketchfab: Anatomi Trakea 3D' : 'Sketchfab: 3D Trachea Anatomy'}
+              </span>
+            </div>
 
-          {/* Mode label watermark */}
-          <div 
-            style={{ 
-              position: 'absolute', 
-              left: '16px', 
-              bottom: '16px', 
-              background: 'rgba(255, 255, 255, 0.85)', 
-              backdropFilter: 'blur(8px)',
-              border: '1px solid #cbd5e1',
-              borderRadius: '8px',
-              padding: '6px 12px',
-              fontSize: '10.5px',
-              fontWeight: '700',
-              color: '#475569',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              pointerEvents: 'none',
-              zIndex: 5
-            }}
-          >
-            <Rotate3D size={13} />
-            <span>
-              {lang === 'id' ? 'Sketchfab: Anatomi Trakea 3D' : 'Sketchfab: 3D Trachea Anatomy'}
-            </span>
+            {/* Floating Fullscreen Toggle Button in bottom right */}
+            <button 
+              className="floating-fullscreen-btn"
+              onClick={() => setIsFullscreen()}
+              title={isFullscreen ? (lang === 'id' ? 'Keluar Layar Penuh' : 'Exit Fullscreen') : (lang === 'id' ? 'Layar Penuh' : 'Fullscreen')}
+              style={{ bottom: '16px', right: '16px' }}
+            >
+              {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+            </button>
+
           </div>
+
+          {/* Floating resizable & draggable 2D Diagram Panel (Desktop only) */}
+          {isDesktop && isDiagramOpen && (
+            <div 
+              style={{
+                position: 'absolute',
+                left: `${position.x}px`,
+                top: `${position.y}px`,
+                zIndex: 100,
+                background: '#ffffff',
+                border: '1.5px solid #cbd5e1',
+                borderRadius: '16px',
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                display: 'flex',
+                flexDirection: 'column',
+                cursor: isDragging ? 'grabbing' : 'default',
+                userSelect: 'none',
+                overflow: 'hidden',
+                minWidth: '280px',
+                minHeight: '250px',
+                width: `${size.width}px`,
+                height: `${size.height}px`
+              }}
+            >
+              {/* Drag Handle Header */}
+              <div 
+                onMouseDown={handleMouseDown}
+                style={{
+                  padding: '10px 14px',
+                  background: '#f8fafc',
+                  borderBottom: '1px solid #e2e8f0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'grab',
+                  fontWeight: 'bold',
+                  fontSize: '11px',
+                  color: '#475569'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <BookOpen size={14} color="#0284c7" />
+                  <span>{lang === 'id' ? 'Diagram 2D Trakea' : '2D Trachea Diagram'}</span>
+                </div>
+                <button 
+                  onClick={() => setIsDiagramOpen(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    padding: '2px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* diagram wrapper */}
+              <div style={{ padding: '12px', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto' }}>
+                <div>
+                  <h4 style={{ margin: '0 0 6px 0', fontSize: '9.5px', fontWeight: '800', color: '#1e293b', textAlign: 'center' }}>
+                    {lang === 'id' ? 'DIAGRAM INTERAKTIF TRAKEA' : 'INTERACTIVE TRACHEA DIAGRAM'}
+                  </h4>
+                  <div style={{ position: 'relative', width: '100%' }}>
+                    {renderSVGDiagram()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Resize Handle */}
+              <div 
+                onMouseDown={handleResizeMouseDown}
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  bottom: 0,
+                  width: '18px',
+                  height: '18px',
+                  cursor: 'se-resize',
+                  zIndex: 110,
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  justifyContent: 'flex-end',
+                  padding: '2px',
+                  pointerEvents: 'auto'
+                }}
+                title={lang === 'id' ? 'Tarik untuk mengubah ukuran' : 'Drag to resize'}
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" style={{ pointerEvents: 'none' }}>
+                  <path d="M10,0 L0,10 M10,4 L4,10 M10,8 L8,10" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </div>
+            </div>
+          )}
 
         </div>
       </div>
-
-    </div>
 
       {/* CSS Styles injection specifically for the interactive diagram label buttons and animation */}
       <style>{`
@@ -818,6 +1109,10 @@ export default function TracheaSketchfabScene({
           }
         }
         
+        .trachea-tab-selector {
+          display: none !important;
+        }
+
         .trachea-svg-overlay {
           position: absolute;
           top: 0;
@@ -826,44 +1121,6 @@ export default function TracheaSketchfabScene({
           height: 100%;
           pointer-events: none;
           z-index: 20;
-        }
-
-        .diag-label-btn {
-          width: 100%;
-          height: 100%;
-          border: 1px solid #cbd5e1;
-          background: #ffffff;
-          border-radius: 8px;
-          color: #334155;
-          font-weight: 700;
-          font-size: 11px;
-          line-height: 1.25;
-          text-align: center;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 4px;
-          box-shadow: 0 2px 4px rgba(15, 23, 42, 0.02);
-          transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
-          cursor: pointer;
-        }
-        .diag-label-btn:hover {
-          background: #f8fafc;
-          border-color: #94a3b8;
-          transform: translateY(-1px);
-        }
-        .diag-label-btn.active {
-          color: #ffffff;
-          box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
-        }
-        .diag-label-btn.active.teal { background: #0d9488; border-color: #0d9488; }
-        .diag-label-btn.active.green { background: #10b981; border-color: #10b981; }
-        .diag-label-btn.active.blue { background: #0284c7; border-color: #0284c7; }
-        .diag-label-btn.active.darkblue { background: #0369a1; border-color: #0369a1; }
-        .diag-label-btn.active.amber { background: #d97706; border-color: #d97706; }
-
-        .trachea-tab-selector {
-          display: none !important;
         }
 
         /* Responsive Breakpoints */
@@ -888,7 +1145,6 @@ export default function TracheaSketchfabScene({
           }
         }
       `}</style>
-
     </div>
   );
 }
